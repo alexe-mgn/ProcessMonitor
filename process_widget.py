@@ -33,10 +33,19 @@ class ProcessWidget(Qw.QGroupBox):
         self.type_label.setText(self.type)
         layout.addWidget(self.type_label, 3)
         self.get_processes()
+
+        self.more_info = Qw.QGroupBox(self)
+        #self.more_info.hide()
+        self.lay.addWidget(self.more_info)
+        
+
+
+
+
         self.update()
 
     def mousePressEvent(self, event):
-        pass
+        self.setFixedHeight(200)
 
     def get_processes(self):
         self.processes = [e for e in psutil.process_iter() if e.name() == self.proc_name]
