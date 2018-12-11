@@ -5,10 +5,17 @@ import PyQt5.QtGui as Qg
 import PyQt5.QtCore as Qc
 
 
-class ProcessTab(Qw.QGroupBox):
+class ProcessTab(Qw.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.init_ui()
+
+    def init_ui(self):
+        pass
+
+    def update_info(self):
+        pass
 
 
 class GraphsTab(Qw.QWidget):
@@ -18,21 +25,23 @@ class GraphsTab(Qw.QWidget):
         self.init_ui()
 
     def init_ui(self):
-        lbl = Qw.QLabel('Some graphs here', self)
-        lbl.setFixedSize(100, 100)
-        self.setFixedSize(100, 100)
+        pass
+
+    def update_info(self):
+        pass
 
 
-class SettingsTab(Qw.QGroupBox):
+class SettingsTab(Qw.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.init_ui()
 
     def init_ui(self):
-        self.f_lbl = Qw.QLabel('Frequency here', self)
-        self.f_lbl.setFixedSize(100, 100)
-        self.setFixedSize(100, 100)
+        pass
+
+    def update_info(self):
+        pass
 
 
 class Main:
@@ -59,19 +68,25 @@ class Main:
         self.layout.addWidget(self.scroll)
 
         self.tab_widgets = [ProcessTab(), GraphsTab(), SettingsTab()]
-        self.scroll.setWidget(self.tab_widgets[2])
+        self.scroll.setWidget(self.tab_widgets[0])
 
     def change_tab(self, ind):
         self.layout.removeWidget(self.scroll)
         self.scroll = Qw.QScrollArea(self.main_window)
         self.layout.addWidget(self.scroll)
+        self.tab_widgets[ind].update_info()
         self.scroll.setWidget(self.tab_widgets[ind])
 
     def show(self):
         self.main_window.show()
 
 
+def except_hook(cls, exception, traceback):
+    sys.__excepthook__(cls, exception, traceback)
+
+
 if __name__ == '__main__':
+    sys.excepthook = except_hook
     app = Qw.QApplication(sys.argv)
     main = Main()
     main.show()
