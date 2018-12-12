@@ -6,7 +6,8 @@ import PyQt5.QtCore as Qc
 
 
 class ExtraProcessWidget(Qw.QGroupBox):
-    def __init__(self, parent=None, proc=None, proc_type=''):
+
+    def __init__(self, parent=None, proc=None):
         super().__init__(parent)
         layout = Qw.QHBoxLayout(self)
         self.proc = proc
@@ -43,11 +44,13 @@ class ExtraProcessWidget(Qw.QGroupBox):
 
 class ProcessWidget(Qw.QGroupBox):
 
-    def __init__(self, parent=None, proc_name=None, type=''):
+    def __init__(self, parent=None, proc_name=None, proc_type=''):
         super().__init__(parent)
-        self.type = type
+        self.proc_type = proc_type
         self.proc_name = proc_name
         self.lay = Qw.QVBoxLayout(self)
+
+        # Заголовок
         self.header = Qw.QWidget(self)
         self.header.setFixedHeight(70)
         layout = Qw.QHBoxLayout(self.header)
@@ -59,7 +62,6 @@ class ProcessWidget(Qw.QGroupBox):
         self.header.setStyleSheet(style)
         self.name_label = Qw.QLabel()
         self.name_label.setText(self.proc_name)
-
         layout.addWidget(self.name_label, 5)
         self.cp_label = Qw.QLabel()
         layout.addWidget(self.cp_label, 1)
@@ -68,25 +70,30 @@ class ProcessWidget(Qw.QGroupBox):
         self.count_proc_label = Qw.QLabel()
         layout.addWidget(self.count_proc_label, 2)
         self.type_label = Qw.QLabel()
-        self.type_label.setText(self.type)
+        self.type_label.setText(self.proc_type)
         layout.addWidget(self.type_label, 3)
         self.get_processes()
 
+        # Дополнительная информация.
         self.more_info = Qw.QGroupBox(self)
         self.more_info.hide()
+        layout = Qw.QVBoxLayout(self.more_info)
         self.lay.addWidget(self.more_info)
 
         self.more_proc = Qw.QGroupBox(self.more_info)
+        self.more_proc.setMaximumWidth(500)
+        layout.addWidget(self.more_proc)
 
         self.lay2 = Qw.QVBoxLayout(self.more_proc)
 
+        self.get_processes()
         self.procs = []
+        self.lay2.setSpacing(10)
         for i in range(len(self.processes)):
             self.procs.append(ExtraProcessWidget(proc=self.processes[i]))
             self.lay2.addWidget(self.procs[i])
 
         self.count_clicks = 0
-        self.get_processes()
         self.update_info()
 
 
