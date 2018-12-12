@@ -65,17 +65,24 @@ class Main:
         self.layout.addWidget(self.tabs)
 
         self.scroll = Qw.QScrollArea(self.main_window)
+        self.scroll.setWidgetResizable(True)
         self.layout.addWidget(self.scroll)
 
+        self.tab_ind = 0
         self.tab_widgets = [ProcessTab(), GraphsTab(), SettingsTab()]
         self.scroll.setWidget(self.tab_widgets[0])
 
     def change_tab(self, ind):
+        self.tab_ind = ind
         self.layout.removeWidget(self.scroll)
         self.scroll = Qw.QScrollArea(self.main_window)
+        self.scroll.setWidgetResizable(True)
         self.layout.addWidget(self.scroll)
         self.tab_widgets[ind].update_info()
         self.scroll.setWidget(self.tab_widgets[ind])
+
+    def update_info(self):
+        self.tab_widgets[self.tab_ind].update_info()
 
     def show(self):
         self.main_window.show()
