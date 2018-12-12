@@ -3,10 +3,20 @@ import psutil
 import PyQt5.QtWidgets as Qw
 import PyQt5.QtGui as Qg
 import PyQt5.QtCore as Qc
+import pyqtgraph as Pg
+
+
+class CustomGraph(Pg.PlotWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.item = self.getPlotItem()
+        self.box = self.item.getViewBox()
+        self.setMouseEnabled(False, False)
+        self.setMenuEnabled(False)
 
 
 class ExtraProcessWidget(Qw.QGroupBox):
-    def __init__(self, parent=None, proc=None, type=''):
+    def __init__(self, parent=None, proc=None, proc_type=''):
         super().__init__(parent)
         layout = Qw.QHBoxLayout(self)
         self.proc = proc
@@ -18,32 +28,31 @@ class ExtraProcessWidget(Qw.QGroupBox):
         self.memory_label = Qw.QLabel()
         layout.addWidget(self.memory_label)
 
+        self.update_info()
+
     def update_info(self):
-        self.memory_label.setText(count_memory(self))
-        self.cp_label.setText(count_cp(self))
+        self.memory_label.setText(self.count_memory())
+        self.cp_label.setText('%.3f' % (self.count_cp(),))
 
     def count_memory(self):
-        self.memory = human_read_format(self.proc.memory_info().rss)
-        return self.memory
+        return self.human_read_format(self.proc.memory_info().rss)
 
     def count_cp(self):
-        pass
+        return self.proc.cpu_percent()
 
+    @staticmethod
     def human_read_format(size):
-        n = 'Б'
-        if size > 1023:
-            size = round(size / 1024)
-            n = 'КБ'
-        if size > 1023:
-            size = round(size / 1024)
-            n = 'МБ'
-        if size > 1023:
-            size = round(size / 1024)
-            n = 'ГБ'
-        return str(size) + n
+        levels = ['Б', 'КБ', 'МБ', 'ГБ']
+        lvl = 0
+        cr = size
+        while cr // 1024 > 0:
+            cr = cr // 1024
+            lvl += 1
+        return str(round(size / 1024 ** lvl)) + levels[lvl]
 
 
 class ProcessWidget(Qw.QGroupBox):
+
     def __init__(self, parent=None, proc_name=None, type=''):
         super().__init__(parent)
         self.type = type
@@ -54,7 +63,8 @@ class ProcessWidget(Qw.QGroupBox):
         layout = Qw.QHBoxLayout(self.header)
         self.lay.addWidget(self.header)
         self.setFixedHeight(70)
-        self.setMinimumWidth(200)
+        self.setMinimumWidth(400)
+        self.setMaximumWidth(700)
 
         style = 'QLabel {font-size: 16px;}'
         self.header.setStyleSheet(style)
@@ -76,20 +86,56 @@ class ProcessWidget(Qw.QGroupBox):
         self.more_info = Qw.QGroupBox(self)
         self.more_info.hide()
         self.lay.addWidget(self.more_info)
+        self.ex_inf_lay = Qw.QVBoxLayout(self.more_info)
 
         self.more_proc = Qw.QGroupBox(self.more_info)
 
+        self.more_proc.setFixedSize(400,300)
+        self.ex_inf_lay.addWidget(self.more_proc)
+
+        # =self.more_proc.setFixedWidth(400)
         self.lay2 = Qw.QVBoxLayout(self.more_proc)
+        self.widget1 = Qw.QWidget()
+        self.extralay = Qw.QHBoxLayout(self.widget1)
+        self.widget1.setFixedHeight(70)
+        self.label_name = Qw.QLabel()
+        self.label_name.setText('PID')
+        self.extralay.addWidget(self.label_name)
+        self.label_cpu = Qw.QLabel()
+        self.label_cpu.setText('CPU')
+        self.extralay.addWidget(self.label_cpu)
+        self.label_mem = Qw.QLabel()
+        self.label_mem.setText('Mem Usage')
+        self.extralay.addWidget(self.label_mem)
+        self.label_type = Qw.QLabel()
+        self.label_type.setText('Type')
+        self.extralay.addWidget(self.label_type)
+        self.lay2.addWidget(self.widget1)
+
+        self.scroll_area = Qw.QScrollArea(self.more_info)
+        self.scroll_area.setWidget(self.more_proc)
+        self.scroll_area.setFixedSize(500,400)
+
 
         self.procs = []
+
         for i in range(len(self.processes)):
             self.procs.append(ExtraProcessWidget(proc=self.processes[i]))
+            self.procs[i].setFixedHeight(70)
             self.lay2.addWidget(self.procs[i])
 
         self.count_clicks = 0
         self.get_processes()
-        self.update()
+        self.memory_list = []
+        self.cpu_list = []
 
+        self.graph_cpu = CustomGraph(self.more_info)
+        self.graph_cpu.plot(self.cpu_list)
+        self.graph_cpu.setFixedSize(500,200)
+
+        self.ex_inf_lay.addWidget(self.graph_cpu)
+
+        self.update_info()
 
     def mousePressEvent(self, event):
         self.count_clicks += 1
@@ -100,26 +146,23 @@ class ProcessWidget(Qw.QGroupBox):
             self.more_info.hide()
             self.setFixedHeight(80)
 
-
     def get_processes(self):
         self.processes = [e for e in psutil.process_iter() if e.name() == self.proc_name]
 
-
     def update_info(self):
-        self.cp_label.setText(str('%.1f%%' % (self.count_cp(),)))
+        self.cp_label.setText('%.1f%%' % (self.count_cp(),))
         self.memory_label.setText('%.1f%%' % (self.count_memory(),))
         self.count_proc_label.setText(str(self.count_proc()))
-
+        self.memory_list.append(self.count_memory())
+        self.cpu_list.append(self.count_cp())
+        for i in self.procs:
+            i.update_info()
 
     def count_cp(self):
-        cp = sum([i.cpu_percent() for i in self.processes])
-        return cp
-
+        return sum([i.cpu_percent() for i in self.processes])
 
     def count_memory(self):
-        memory = round(sum([i.memory_percent() for i in self.processes]))
-        return memory
-
+        return sum([i.memory_percent() for i in self.processes])
 
     def count_proc(self):
         return len(self.processes)
