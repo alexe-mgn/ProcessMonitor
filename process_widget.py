@@ -58,12 +58,12 @@ class ProcessWidget(Qw.QGroupBox):
         self.type = type
         self.proc_name = proc_name
         self.lay = Qw.QVBoxLayout(self)
-        self.header = Qw.QWidget(self)
-        self.header.setFixedHeight(70)
+        self.header = Qw.QGroupBox(self)
+        self.header.setFixedHeight(40)
         layout = Qw.QHBoxLayout(self.header)
         self.lay.addWidget(self.header)
-        self.setFixedHeight(70)
-        self.setMinimumWidth(400)
+        self.setFixedHeight(60)
+        self.setMinimumWidth(300)
         self.setMaximumWidth(700)
 
         style = 'QLabel {font-size: 16px;}'
@@ -90,14 +90,10 @@ class ProcessWidget(Qw.QGroupBox):
 
         self.more_proc = Qw.QGroupBox(self.more_info)
 
-        self.more_proc.setFixedSize(400,300)
-        self.ex_inf_lay.addWidget(self.more_proc)
-
-        # =self.more_proc.setFixedWidth(400)
         self.lay2 = Qw.QVBoxLayout(self.more_proc)
-        self.widget1 = Qw.QWidget()
+        self.widget1 = Qw.QGroupBox()
         self.extralay = Qw.QHBoxLayout(self.widget1)
-        self.widget1.setFixedHeight(70)
+        self.widget1.setFixedHeight(40)
         self.label_name = Qw.QLabel()
         self.label_name.setText('PID')
         self.extralay.addWidget(self.label_name)
@@ -107,21 +103,26 @@ class ProcessWidget(Qw.QGroupBox):
         self.label_mem = Qw.QLabel()
         self.label_mem.setText('Mem Usage')
         self.extralay.addWidget(self.label_mem)
-        self.label_type = Qw.QLabel()
-        self.label_type.setText('Type')
-        self.extralay.addWidget(self.label_type)
-        self.lay2.addWidget(self.widget1)
+        self.ex_inf_lay.addWidget(self.widget1)
 
         self.scroll_area = Qw.QScrollArea(self.more_info)
+        self.scroll_area.setVerticalScrollBarPolicy(Qc.Qt.ScrollBarAlwaysOn)
         self.scroll_area.setWidget(self.more_proc)
-        self.scroll_area.setFixedSize(500,400)
+        self.scroll_area.setMaximumHeight(300)
+        self.scroll_area.setWidgetResizable(True)
 
+        self.extralay.insertSpacing(0, 12)
+        self.extralay.insertSpacing(4, 27)
+
+        self.ex_inf_lay.addWidget(self.scroll_area)
 
         self.procs = []
 
+        self.lay2.setAlignment(Qc.Qt.AlignTop)
+
         for i in range(len(self.processes)):
             self.procs.append(ExtraProcessWidget(proc=self.processes[i]))
-            self.procs[i].setFixedHeight(70)
+            self.procs[i].setFixedHeight(40)
             self.lay2.addWidget(self.procs[i])
 
         self.count_clicks = 0
@@ -131,7 +132,7 @@ class ProcessWidget(Qw.QGroupBox):
 
         self.graph_cpu = CustomGraph(self.more_info)
         self.graph_cpu.plot(self.cpu_list)
-        self.graph_cpu.setFixedSize(500,200)
+        self.graph_cpu.setFixedHeight(200)
 
         self.ex_inf_lay.addWidget(self.graph_cpu)
 
@@ -141,10 +142,11 @@ class ProcessWidget(Qw.QGroupBox):
         self.count_clicks += 1
         if self.count_clicks % 2 == 1:
             self.more_info.show()
-            self.setFixedHeight(800)
         else:
+            self.scroll_area.verticalScrollBar().setValue(0)
             self.more_info.hide()
-            self.setFixedHeight(80)
+            self.adjustSize()
+        self.setFixedHeight(self.sizeHint().height())
 
     def get_processes(self):
         self.processes = [e for e in psutil.process_iter() if e.name() == self.proc_name]
@@ -173,7 +175,7 @@ class Main:
         self.window = Qw.QWidget()
         self.window.setGeometry(0, 0, 300, 300)
         layout = Qw.QVBoxLayout(self.window)
-        self.wd = ProcessWidget(proc_name='chrome.exe')
+        self.wd = ProcessWidget(proc_name='opera.exe')
         layout.addWidget(self.wd)
 
     def show(self):
