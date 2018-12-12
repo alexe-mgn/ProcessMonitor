@@ -6,7 +6,7 @@ import PyQt5.QtCore as Qc
 
 
 class ExtraProcessWidget(Qw.QGroupBox):
-    def __init__(self, parent=None, proc=None, type=''):
+    def __init__(self, parent=None, proc=None, proc_type=''):
         super().__init__(parent)
         layout = Qw.QHBoxLayout(self)
         self.proc = proc
@@ -18,32 +18,31 @@ class ExtraProcessWidget(Qw.QGroupBox):
         self.memory_label = Qw.QLabel()
         layout.addWidget(self.memory_label)
 
+        self.update_info()
+
     def update_info(self):
-        self.memory_label.setText(count_memory(self))
-        self.cp_label.setText(count_cp(self))
+        self.memory_label.setText(self.count_memory())
+        self.cp_label.setText('%.3f' % (self.count_cp(),))
 
     def count_memory(self):
-        self.memory = human_read_format(self.proc.memory_info().rss)
-        return self.memory
+        return self.human_read_format(self.proc.memory_info().rss)
 
     def count_cp(self):
-        pass
+        return self.proc.cpu_percent()
 
+    @staticmethod
     def human_read_format(size):
-        n = 'Б'
-        if size > 1023:
-            size = round(size / 1024)
-            n = 'КБ'
-        if size > 1023:
-            size = round(size / 1024)
-            n = 'МБ'
-        if size > 1023:
-            size = round(size / 1024)
-            n = 'ГБ'
-        return str(size) + n
+        levels = ['Б', 'КБ', 'МБ', 'ГБ']
+        lvl = 0
+        cr = size
+        while cr // 1024 > 0:
+            cr = cr // 1024
+            lvl += 1
+        return str(round(size / 1024 ** lvl)) + levels[lvl]
 
 
 class ProcessWidget(Qw.QGroupBox):
+
     def __init__(self, parent=None, proc_name=None, type=''):
         super().__init__(parent)
         self.type = type
@@ -88,7 +87,7 @@ class ProcessWidget(Qw.QGroupBox):
 
         self.count_clicks = 0
         self.get_processes()
-        self.update()
+        self.update_info()
 
 
     def mousePressEvent(self, event):
@@ -104,22 +103,16 @@ class ProcessWidget(Qw.QGroupBox):
     def get_processes(self):
         self.processes = [e for e in psutil.process_iter() if e.name() == self.proc_name]
 
-
     def update_info(self):
-        self.cp_label.setText(str('%.1f%%' % (self.count_cp(),)))
+        self.cp_label.setText('%.1f%%' % (self.count_cp(),))
         self.memory_label.setText('%.1f%%' % (self.count_memory(),))
         self.count_proc_label.setText(str(self.count_proc()))
 
-
     def count_cp(self):
-        cp = sum([i.cpu_percent() for i in self.processes])
-        return cp
-
+        return sum([i.cpu_percent() for i in self.processes])
 
     def count_memory(self):
-        memory = round(sum([i.memory_percent() for i in self.processes]))
-        return memory
-
+        return sum([i.memory_percent() for i in self.processes])
 
     def count_proc(self):
         return len(self.processes)
@@ -130,7 +123,7 @@ class Main:
         self.window = Qw.QWidget()
         self.window.setGeometry(0, 0, 300, 300)
         layout = Qw.QVBoxLayout(self.window)
-        self.wd = ProcessWidget(proc_name='chrome.exe')
+        self.wd = ProcessWidget(proc_name='opera.exe')
         layout.addWidget(self.wd)
 
     def show(self):
