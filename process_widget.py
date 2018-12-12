@@ -4,6 +4,32 @@ import PyQt5.QtWidgets as Qw
 import PyQt5.QtGui as Qg
 import PyQt5.QtCore as Qc
 
+class ExtraProcessWidget(Qw.QGroupBox):
+    def __init__(self, parent=None, proc=None, type=''):
+        super().__init__(parent)
+        layout = Qw.QHBoxLayout(self)
+        self.proc=proc
+
+        self.pid_label = Qw.QLabel()
+        self.pid_label.setText(self.proc.pid)
+        layout.addWidget(self.pid_label)
+        self.cp_label = Qw.QLabel()
+        layout.addWidget(self.cp_label)
+        self.memory_label = Qw.QLabel()
+        layout.addWidget(self.memory_label)
+
+    def update_info(self):
+        pass
+
+    def count_memory(self):
+        pass
+
+    def count_cp(self):
+        pass
+
+
+
+
 
 class ProcessWidget(Qw.QGroupBox):
     def __init__(self, parent=None, proc_name=None, type=''):
@@ -35,22 +61,45 @@ class ProcessWidget(Qw.QGroupBox):
         self.get_processes()
 
         self.more_info = Qw.QGroupBox(self)
-        #self.more_info.hide()
+        self.more_info.hide()
         self.lay.addWidget(self.more_info)
-        
+        # self.more_info = Qw.QGroupBox(self)
+        # self.more_info.move(10, 40)
+        # self.more_info.hide()
+        self.more_proc = Qw.QGroupBox(self.more_info)
+        self.lay2 = Qw.QVBoxLayout(self.more_proc)
+
+      #self.procs=[]
+      #for i in range(self.processes):
+      #    self.procs.append(Qw.QHBoxLayout())
+
+            # self.name_label1 = Qw.QLabel()
+            # self.name_label1.setText(self.proc_name)
+
+            # self.lay2.addWidget(self.name_label, 5)
+            # self.cp_label1 = Qw.QLabel()
+            # self.lay2.addWidget(self.cp_label, 1)
+            # self.memory_label1 = Qw.QLabel()
+            # self.lay2.addWidget(self.memory_label, 1)
+            # self.count_proc_label1 = Qw.QLabel()
+            # self.lay2.addWidget(self.count_proc_label, 2)
+            # self.type_label1 = Qw.QLabel()
+            # self.type_label1.setText(self.type)
+            # self.lay2.addWidget(self.type_label, 3)
 
 
-
-
+        self.get_processes()
         self.update()
 
     def mousePressEvent(self, event):
         self.setFixedHeight(200)
+        self.more_info.show()
+        # self.setFixedHeight(80)
 
     def get_processes(self):
         self.processes = [e for e in psutil.process_iter() if e.name() == self.proc_name]
 
-    def update(self):
+    def update_info(self):
         self.cp_label.setText(str('%.1f%%' % (self.count_cp(),)))
         self.memory_label.setText('%.1f%%' % (self.count_memory(),))
         self.count_proc_label.setText(str(self.count_proc()))
