@@ -217,6 +217,9 @@ class ProcessWidget(Qw.QGroupBox):
     def count_proc(self):
         return len(self.processes)
 
+    def delete_dead_proc(self):
+        pass
+
 
 
 class ProcessTab(Qw.QWidget):
@@ -236,6 +239,7 @@ class ProcessTab(Qw.QWidget):
 
 
     def update_info(self):
+        self.delete_dead_proc()
         for e in self.proc_wds:
             e.update_info()
 
@@ -248,7 +252,9 @@ class ProcessTab(Qw.QWidget):
         return self.processes
 
     def delete_dead_proc(self):
-        pass
+        for i in self.processes:
+            if i not in list(map(lambda e: e.name(),list( psutil.process_iter()))):
+                del self.processes[self.processes.index(i)]
 
 class SettingsTab(Qw.QWidget):
 
