@@ -52,13 +52,13 @@ class SettingsTab(Qw.QWidget):
         self.label_pas.move(20, 50)
 
         self.spin_fr = Qw.QDoubleSpinBox(self)
-        self.spin_fr.move(200, 30)
+        self.spin_fr.move(150, 30)
         self.spin_fr.setMaximum(3600.0)
         self.spin_fr.setMinimum(1.0)
         self.spin_fr.setSingleStep(1.0)
         
         self.spin_pas = Qw.QDoubleSpinBox(self)
-        self.spin_pas.move(200, 50)
+        self.spin_pas.move(150, 50)
         self.spin_pas.setMaximum(3600.0)
         self.spin_pas.setMinimum(1.0)
         self.spin_pas.setSingleStep(1.0)
@@ -153,8 +153,8 @@ class Main:
 
     def read_settings(self):
         self.settings = Qc.QSettings()
-        self.update_frequency = self.settings.value('update frequency', 10)
-        self.passive_period = self.settings.value('passive period', 5)
+        self.update_frequency = float(self.settings.value('update frequency', 10))
+        self.passive_period = float(self.settings.value('passive period', 5))
         if self.timing:
             self.kill_timers()
             self.init_timers()
