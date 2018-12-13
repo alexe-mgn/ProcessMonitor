@@ -55,7 +55,6 @@ class Main:
         self.init_ui()
         self.init_timers()
         self.start_timers()
-        self.write_settings()
 
     def init_timers(self):
         self.timer = Qc.QTimer(self.main_window)

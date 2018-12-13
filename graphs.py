@@ -7,6 +7,10 @@ import pyqtgraph as Pg
 import time
 
 
+APP_NAME = 'Process Monitor'
+ORG_NAME = 'Project1'
+
+
 class CustomGraph(Pg.PlotWidget):
 
     def __init__(self, parent=None):
@@ -28,6 +32,9 @@ class ProcessTab(Qw.QWidget):
         pass
 
     def update_info(self):
+        pass
+
+    def passive_update(self):
         pass
 
 
@@ -69,6 +76,9 @@ class GraphsTab(Qw.QWidget):
         self.mem_graph.plot([e[0] - update_time for e in self.mem_info], [e[1] for e in self.mem_info])
         self.clear_garbage(update_time)
 
+    def passive_update(self):
+        pass
+
     def clear_garbage(self, cur_time):
         self.cpu_info = [e for e in self.cpu_info if e[0] - cur_time >= -self.x_range]
         self.mem_info = [e for e in self.mem_info if e[0] - cur_time >= -self.x_range]
@@ -86,14 +96,37 @@ class SettingsTab(Qw.QWidget):
     def update_info(self):
         pass
 
+    def passive_update(self):
+        pass
+
 
 class Main:
 
     def __init__(self):
+        self.read_settings()
         self.init_ui()
+        self.init_timers()
+        self.start_timers()
+
+    def init_timers(self):
+        self.timer = Qc.QTimer(self.main_window)
+        self.timer.setInterval(1000 / self.update_frequency)
+        self.timer.timeout.connect(self.update_info)
+        self.passive_timer = Qc.QTimer(self.main_window)
+        self.passive_timer.setInterval(self.passive_period * 1000)
+        self.passive_timer.timeout.connect(self.passive_update)
+
+    def start_timers(self):
+        self.timer.start()
+        self.passive_timer.start()
+
+    def stop_timers(self):
+        self.timer.stop()
+        self.passive_timer.stop()
 
     def init_ui(self):
         self.main_window = Qw.QWidget()
+        self.main_window.setWindowTitle(APP_NAME)
         self.main_window.setGeometry(300, 300, 300, 300)
         self.layout = Qw.QVBoxLayout(self.main_window)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -108,20 +141,15 @@ class Main:
         self.layout.addWidget(self.tabs)
 
         self.scroll = Qw.QScrollArea(self.main_window)
+        self.scroll.setWidgetResizable(True)
         self.layout.addWidget(self.scroll)
 
-        self.ind = 0
+        self.tab_ind = 0
         self.tab_widgets = [ProcessTab(), GraphsTab(), SettingsTab()]
         self.scroll.setWidget(self.tab_widgets[0])
-        self.scroll.setWidgetResizable(True)
-
-        self.timer = Qc.QTimer(self.main_window)
-        self.timer.setInterval(100)
-        self.timer.timeout.connect(self.update_info)
-        self.timer.start()
 
     def change_tab(self, ind):
-        self.ind = ind
+        self.tab_ind = ind
         self.layout.removeWidget(self.scroll)
         self.scroll = Qw.QScrollArea(self.main_window)
         self.scroll.setWidgetResizable(True)
@@ -130,7 +158,16 @@ class Main:
         self.scroll.setWidget(self.tab_widgets[ind])
 
     def update_info(self):
-        self.tab_widgets[self.ind].update_info()
+        self.tab_widgets[self.tab_ind].update_info()
+
+    def passive_update(self):
+        for i in self.tab_widgets:
+            i.passive_update()
+
+    def read_settings(self):
+        self.settings = Qc.QSettings()
+        self.update_frequency = self.settings.value('update frequency', 10)
+        self.passive_period = self.settings.value('passive period', 5)
 
     def show(self):
         self.main_window.show()
@@ -143,6 +180,8 @@ def except_hook(cls, exception, traceback):
 if __name__ == '__main__':
     sys.excepthook = except_hook
     app = Qw.QApplication(sys.argv)
+    app.setApplicationName(APP_NAME)
+    app.setOrganizationName(ORG_NAME)
     main = Main()
     main.show()
     sys.exit(app.exec())
