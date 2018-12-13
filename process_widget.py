@@ -7,12 +7,15 @@ import pyqtgraph as Pg
 
 
 class CustomGraph(Pg.PlotWidget):
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.item = self.getPlotItem()
         self.box = self.item.getViewBox()
         self.setMouseEnabled(False, False)
         self.setMenuEnabled(False)
+        self.hideButtons()
+        self.item.showGrid(True, True)
 
 
 class ExtraProcessWidget(Qw.QGroupBox):
@@ -175,6 +178,13 @@ class ProcessWidget(Qw.QGroupBox):
             for i in self.procs:
                 i.update_info()
 
+        self.graph_cpu.plot([e for e in self.cpu_list])
+        self.graph_mem.clear()
+        self.graph_mem.plot([e for e in self.memory_list])
+
+    def passive_update(self):
+        self.update_info()
+
     def count_cp(self):
         return sum([i.cpu_percent() for i in self.processes])
 
@@ -195,6 +205,7 @@ class Main:
 
     def show(self):
         self.window.show()
+
 
 
 if __name__ == '__main__':
