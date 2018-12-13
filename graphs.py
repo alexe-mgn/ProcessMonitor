@@ -21,6 +21,7 @@ class CustomGraph(Pg.PlotWidget):
         self.setMouseEnabled(False, False)
         self.setMenuEnabled(False)
         self.hideButtons()
+        self.item.showGrid(True, True)
 
 
 class ProcessTab(Qw.QWidget):
