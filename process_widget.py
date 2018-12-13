@@ -4,6 +4,7 @@ import PyQt5.QtWidgets as Qw
 import PyQt5.QtGui as Qg
 import PyQt5.QtCore as Qc
 import pyqtgraph as Pg
+import time
 
 
 class CustomGraph(Pg.PlotWidget):
@@ -58,6 +59,7 @@ class ProcessWidget(Qw.QGroupBox):
 
     def __init__(self, parent=None, proc_name=None, proc_type=''):
         super().__init__(parent)
+        self.x_range = 60
         self.expanded = False
         self.proc_type = proc_type
         self.proc_name = proc_name
@@ -144,12 +146,17 @@ class ProcessWidget(Qw.QGroupBox):
 
         self.graph_cpu = CustomGraph(self.more_info)
         self.graph_cpu.plot(self.cpu_list)
-        self.graph_cpu.setFixedHeight(120)
+        self.graph_cpu.setFixedHeight(150)
+        self.graph_cpu.setXRange(0, -self.x_range)
+
+
         self.ex_inf_lay.addWidget(self.graph_cpu)
 
         self.graph_mem = CustomGraph(self.more_info)
         self.graph_mem.plot(self.memory_list)
-        self.graph_mem.setFixedHeight(120)
+        self.graph_mem.setFixedHeight(150)
+        self.graph_mem.setXRange(0, -self.x_range)
+
 
         self.ex_inf_lay.addWidget(self.graph_mem)
 
@@ -169,18 +176,26 @@ class ProcessWidget(Qw.QGroupBox):
         self.processes = [e for e in psutil.process_iter() if e.name() == self.proc_name]
 
     def update_info(self):
+        update_time=time.time()
         self.cp_label.setText('%.1f%%' % (self.count_cp(),))
         self.memory_label.setText('%.1f%%' % (self.count_memory(),))
         self.count_proc_label.setText(str(self.count_proc()))
-        self.memory_list.append(self.count_memory())
-        self.cpu_list.append(self.count_cp())
+        self.memory_list.append([update_time, self.count_memory()])
+        self.cpu_list.append([update_time,self.count_cp()])
         if self.expanded:
             for i in self.procs:
                 i.update_info()
 
-        self.graph_cpu.plot([e for e in self.cpu_list])
+        self.graph_cpu.clear()
+        self.graph_cpu.plot([e[0] - update_time for e in self.cpu_list], [e[1] for e in self.cpu_list])
         self.graph_mem.clear()
-        self.graph_mem.plot([e for e in self.memory_list])
+        self.graph_mem.plot([e[0] - update_time for e in self.memory_list], [e[1] for e in self.memory_list])
+        self.clear_garbage(update_time)
+
+    def clear_garbage(self, cur_time):
+        self.cpu_list = [e for e in self.cpu_list if e[0] - cur_time >= -self.x_range]
+        self.memory_list = [e for e in self.memory_list if e[0] - cur_time >= -self.x_range]
+
 
     def passive_update(self):
         self.update_info()
@@ -194,14 +209,16 @@ class ProcessWidget(Qw.QGroupBox):
     def count_proc(self):
         return len(self.processes)
 
-
 class Main:
     def __init__(self):
         self.window = Qw.QWidget()
         self.window.setGeometry(0, 0, 300, 300)
         layout = Qw.QVBoxLayout(self.window)
-        self.wd = ProcessWidget(proc_name='opera.exe')
+        self.wd = ProcessWidget(proc_name='chrome.exe')
         layout.addWidget(self.wd)
+        self.timer = Qc.QTimer(self.window)
+        self.timer.start(100)
+        self.timer.timeout.connect(self.wd.update_info)
 
     def show(self):
         self.window.show()
