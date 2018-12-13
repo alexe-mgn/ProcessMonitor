@@ -53,16 +53,22 @@ class ExtraProcessWidget(Qw.QGroupBox):
 
 class ProcessWidget(Qw.QGroupBox):
 
-    def __init__(self, parent=None, proc_name=None, type=''):
+    def __init__(self, parent=None, proc_name=None, proc_type=''):
         super().__init__(parent)
-        self.type = type
+        self.expanded = False
+        self.proc_type = proc_type
         self.proc_name = proc_name
         self.lay = Qw.QVBoxLayout(self)
+        self.lay.setContentsMargins(5, 5, 5, 5)
         self.header = Qw.QGroupBox(self)
         self.header.setFixedHeight(40)
+        self.header.mousePressEvent = lambda *args: self.popup_resize()
         layout = Qw.QHBoxLayout(self.header)
+        layout.setContentsMargins(10, 2, 10, 2)
         self.lay.addWidget(self.header)
-        self.setFixedHeight(60)
+        # self.setMinimumHeight(self.sizeHint().height())
+        self.setFixedHeight(self.sizeHint().height())
+        # self.setFixedHeight(60)
         self.setMinimumWidth(300)
         self.setMaximumWidth(700)
 
@@ -79,7 +85,7 @@ class ProcessWidget(Qw.QGroupBox):
         self.count_proc_label = Qw.QLabel()
         layout.addWidget(self.count_proc_label, 2)
         self.type_label = Qw.QLabel()
-        self.type_label.setText(self.type)
+        self.type_label.setText(self.proc_type)
         layout.addWidget(self.type_label, 3)
         self.get_processes()
 
@@ -88,12 +94,15 @@ class ProcessWidget(Qw.QGroupBox):
         self.lay.addWidget(self.more_info)
         self.ex_inf_lay = Qw.QVBoxLayout(self.more_info)
 
-        self.more_proc = Qw.QGroupBox(self.more_info)
+        self.more_proc = Qw.QWidget(self.more_info)
 
         self.lay2 = Qw.QVBoxLayout(self.more_proc)
+        self.lay2.setContentsMargins(2, 2, 2, 2)
+        self.lay2.setSpacing(2)
         self.widget1 = Qw.QGroupBox()
         self.extralay = Qw.QHBoxLayout(self.widget1)
-        self.widget1.setFixedHeight(40)
+        self.extralay.setContentsMargins(5, 2, 5, 2)
+        self.widget1.setFixedHeight(30)
         self.label_name = Qw.QLabel()
         self.label_name.setText('PID')
         self.extralay.addWidget(self.label_name)
@@ -108,7 +117,7 @@ class ProcessWidget(Qw.QGroupBox):
         self.scroll_area = Qw.QScrollArea(self.more_info)
         self.scroll_area.setVerticalScrollBarPolicy(Qc.Qt.ScrollBarAlwaysOn)
         self.scroll_area.setWidget(self.more_proc)
-        self.scroll_area.setMaximumHeight(200)
+        self.scroll_area.setFixedHeight(200)
         self.scroll_area.setWidgetResizable(True)
 
         self.extralay.insertSpacing(0, 12)
@@ -122,7 +131,7 @@ class ProcessWidget(Qw.QGroupBox):
 
         for i in range(len(self.processes)):
             self.procs.append(ExtraProcessWidget(proc=self.processes[i]))
-            self.procs[i].setFixedHeight(40)
+            self.procs[i].setFixedHeight(30)
             self.lay2.addWidget(self.procs[i])
 
         self.count_clicks = 0
@@ -132,26 +141,26 @@ class ProcessWidget(Qw.QGroupBox):
 
         self.graph_cpu = CustomGraph(self.more_info)
         self.graph_cpu.plot(self.cpu_list)
-        self.graph_cpu.setFixedHeight(200)
+        self.graph_cpu.setFixedHeight(120)
         self.ex_inf_lay.addWidget(self.graph_cpu)
 
         self.graph_mem = CustomGraph(self.more_info)
         self.graph_mem.plot(self.memory_list)
-        self.graph_mem.setFixedHeight(200)
+        self.graph_mem.setFixedHeight(120)
 
         self.ex_inf_lay.addWidget(self.graph_mem)
 
         self.update_info()
 
-    def mousePressEvent(self, event):
-        self.count_clicks += 1
-        if self.count_clicks % 2 == 1:
-            self.more_info.show()
-        else:
+    def popup_resize(self):
+        if self.expanded:
             self.scroll_area.verticalScrollBar().setValue(0)
             self.more_info.hide()
-            self.adjustSize()
+        else:
+            self.more_info.show()
+        self.expanded = not self.expanded
         self.setFixedHeight(self.sizeHint().height())
+        self.parent().resize(self.parent().size().width(), self.parent().sizeHint().height())
 
     def get_processes(self):
         self.processes = [e for e in psutil.process_iter() if e.name() == self.proc_name]
@@ -162,8 +171,9 @@ class ProcessWidget(Qw.QGroupBox):
         self.count_proc_label.setText(str(self.count_proc()))
         self.memory_list.append(self.count_memory())
         self.cpu_list.append(self.count_cp())
-        for i in self.procs:
-            i.update_info()
+        if self.expanded:
+            for i in self.procs:
+                i.update_info()
 
     def count_cp(self):
         return sum([i.cpu_percent() for i in self.processes])
@@ -180,7 +190,7 @@ class Main:
         self.window = Qw.QWidget()
         self.window.setGeometry(0, 0, 300, 300)
         layout = Qw.QVBoxLayout(self.window)
-        self.wd = ProcessWidget(proc_name='chrome.exe')
+        self.wd = ProcessWidget(proc_name='opera.exe')
         layout.addWidget(self.wd)
 
     def show(self):
