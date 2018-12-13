@@ -149,7 +149,7 @@ class ProcessWidget(Qw.QGroupBox):
         self.graph_cpu.setFixedHeight(150)
         self.graph_cpu.setXRange(0, -self.x_range)
         self.graph_cpu.setYRange(0, 100)
-
+        self.graph_cpu.setLabel('left','CPU')
 
 
         self.ex_inf_lay.addWidget(self.graph_cpu)
@@ -158,6 +158,8 @@ class ProcessWidget(Qw.QGroupBox):
         self.graph_mem.plot(self.memory_list)
         self.graph_mem.setFixedHeight(150)
         self.graph_mem.setXRange(0, -self.x_range)
+        self.graph_mem.setLabel('left','Memory usage')
+
 
 
         self.ex_inf_lay.addWidget(self.graph_mem)
