@@ -221,20 +221,19 @@ class Main:
 
         # Tab scroll area
         self.scroll = Qw.QScrollArea(self.main_window)
-        self.scroll.layout = Qw.QVBoxLayout(self.scroll)
-        self.scroll.layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll.setWidgetResizable(True)
         self.layout.addWidget(self.scroll)
 
         # Tabs init
         self.tab_ind = 0
         self.tab_widgets = [ProcessTab(self), GraphsTab(self), SettingsTab(self)]
-        self.scroll.layout.addWidget(self.tab_widgets[0])
+        self.scroll.setWidget(self.tab_widgets[0])
 
     def change_tab(self, ind):
-        self.current_tab().setParent(None)
+        self.scroll.takeWidget()
         self.tab_ind = ind
         self.tab_widgets[ind].update_info()
-        self.scroll.layout.addWidget(self.tab_widgets[ind])
+        self.scroll.setWidget(self.tab_widgets[ind])
 
     def update_info(self):
         self.current_tab().update_info()
