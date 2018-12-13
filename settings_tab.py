@@ -41,8 +41,6 @@ class SettingsTab(Qw.QWidget):
         super().__init__()
         self.main = parent
         self.init_ui()
-        self.freq = 1.0
-        self.pass_freq = 1.0
         self.check = False
 
     def init_ui(self):
@@ -75,8 +73,8 @@ class SettingsTab(Qw.QWidget):
         self.button.clicked.connect(self.apply)
 
     def apply(self):
-        self.pass_freq = self.spin_pas.value()
-        self.freq = self.spin_fr.value()
+        self.main.settings.setValue('passive period',self.spin_pas.value())
+        self.main.settings.setValue('update frequency',self.spin_fr.value())
         self.check = self.check_b.isChecked()
         self.main.read_settings()
 
