@@ -80,7 +80,7 @@ class GraphsTab(Qw.QGroupBox):
         self.clear_old_data(update_time)
 
     def passive_update(self):
-        if self.main.current_tab() != self:
+        if self.main.current_tab() != self or not self.main.shown:
             update_time = time.time()
             self.cpu_data.append([update_time, psutil.cpu_percent()])
             self.mem_data.append([update_time, psutil.virtual_memory().percent])
@@ -128,10 +128,6 @@ class SettingsTab(Qw.QGroupBox):
         self.spin_pas.setSingleStep(1.0)
         self.spin_pas.setValue(self.main.passive_period)
 
-        self.check_b = Qw.QCheckBox(self)
-        self.check_b.move(20, 70)
-        self.check_b.setText('Run on startup')
-
         self.button = Qw.QPushButton(self)
         self.button.setText('Apply')
         self.button.move(100, 100)
@@ -147,6 +143,18 @@ class SettingsTab(Qw.QGroupBox):
 
     def passive_update(self):
         pass
+
+
+class TrayMenu(Qw.QMenu):
+
+    def __init__(self, parent):
+        super().__init__()
+        self.main = parent
+        self.actions = {'Open': self.main.popup_from_tray,
+                        'Exit': self.main.exit}
+        self.addAction('Open')
+        self.addAction('Exit')
+        self.triggered.connect(lambda action: self.actions[action.text()]())
 
 
 class Main:
@@ -181,14 +189,26 @@ class Main:
         self.passive_timer.killTimer(self.passive_timer.timerId())
 
     def init_ui(self):
+        self.icon = Qg.QIcon(APP_NAME + '.ico')
         # Main window
         self.main_window = Qw.QWidget()
         self.main_window.setWindowTitle(APP_NAME)
+        self.main_window.setWindowIcon(self.icon)
+        self.main_window.closeEvent = self.close_handler
         self.main_window.setGeometry(300, 300, 300, 300)
         self.main_window.setMinimumSize(300, 300)
         self.layout = Qw.QVBoxLayout(self.main_window)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
+
+        # Tray icon
+        self.tray = None
+        if Qw.QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray = Qw.QSystemTrayIcon()
+            self.tray.activated.connect(lambda reason: self.popup_from_tray() if reason == 2 else None)
+            self.tray.setIcon(self.icon)
+            self.tray.setContextMenu(TrayMenu(self))
+            self.tray.show()
 
         # Tabs bar
         self.tabs = Qw.QTabBar()
@@ -235,8 +255,39 @@ class Main:
     def current_tab(self):
         return self.tab_widgets[self.tab_ind]
 
+    def close_handler(self, event):
+        if self.tray is not None:
+            self.hide_to_tray()
+            event.ignore()
+        else:
+            event.accept()
+
+    def popup_from_tray(self):
+        if not self.shown:
+            self.update_info()
+            self.timer.start()
+            self.show()
+
+    def hide_to_tray(self):
+        if self.shown:
+            self.timer.stop()
+            self.hide()
+            self.tray.showMessage('Notification', 'Application minimized to tray', self.icon, 1000)
+
     def show(self):
+        self.shown = True
         self.main_window.show()
+
+    def hide(self):
+        self.shown = False
+        self.main_window.hide()
+
+    def exit(self):
+        self.shown = False
+        self.kill_timers()
+        if self.tray is not None:
+            self.tray.hide()
+        sys.exit()
 
 
 def except_hook(cls, exception, traceback):
