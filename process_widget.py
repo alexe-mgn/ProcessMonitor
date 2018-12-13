@@ -16,7 +16,7 @@ class CustomGraph(Pg.PlotWidget):
 
 
 class ExtraProcessWidget(Qw.QGroupBox):
-    def __init__(self, parent=None, proc=None, proc_type=''):
+    def __init__(self, parent=None, proc=None):
         super().__init__(parent)
         layout = Qw.QHBoxLayout(self)
         self.proc = proc
@@ -32,7 +32,7 @@ class ExtraProcessWidget(Qw.QGroupBox):
 
     def update_info(self):
         self.memory_label.setText(self.count_memory())
-        self.cp_label.setText('%.3f' % (self.count_cp(),))
+        self.cp_label.setText('%.3f%%' % (self.count_cp(),))
 
     def count_memory(self):
         return self.human_read_format(self.proc.memory_info().rss)
@@ -108,7 +108,7 @@ class ProcessWidget(Qw.QGroupBox):
         self.scroll_area = Qw.QScrollArea(self.more_info)
         self.scroll_area.setVerticalScrollBarPolicy(Qc.Qt.ScrollBarAlwaysOn)
         self.scroll_area.setWidget(self.more_proc)
-        self.scroll_area.setMaximumHeight(300)
+        self.scroll_area.setMaximumHeight(200)
         self.scroll_area.setWidgetResizable(True)
 
         self.extralay.insertSpacing(0, 12)
@@ -133,8 +133,13 @@ class ProcessWidget(Qw.QGroupBox):
         self.graph_cpu = CustomGraph(self.more_info)
         self.graph_cpu.plot(self.cpu_list)
         self.graph_cpu.setFixedHeight(200)
-
         self.ex_inf_lay.addWidget(self.graph_cpu)
+
+        self.graph_mem = CustomGraph(self.more_info)
+        self.graph_mem.plot(self.memory_list)
+        self.graph_mem.setFixedHeight(200)
+
+        self.ex_inf_lay.addWidget(self.graph_mem)
 
         self.update_info()
 
@@ -175,7 +180,7 @@ class Main:
         self.window = Qw.QWidget()
         self.window.setGeometry(0, 0, 300, 300)
         layout = Qw.QVBoxLayout(self.window)
-        self.wd = ProcessWidget(proc_name='opera.exe')
+        self.wd = ProcessWidget(proc_name='chrome.exe')
         layout.addWidget(self.wd)
 
     def show(self):
