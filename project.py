@@ -8,7 +8,7 @@ import time
 
 APP_NAME = 'Process Monitor'
 ORG_NAME = 'Project1'
-TAB_MINIMUM_SIZE = [300, 300]
+TAB_MINIMUM_SIZE = [275, 275]
 
 
 class CustomGraph(Pg.PlotWidget):
@@ -23,10 +23,11 @@ class CustomGraph(Pg.PlotWidget):
         self.item.showGrid(True, True)
 
 
-class ProcessTab(Qw.QWidget):
+class ProcessTab(Qw.QGroupBox):
 
     def __init__(self, parent):
         super().__init__()
+        self.setMinimumSize(*TAB_MINIMUM_SIZE)
         self.init_ui()
 
     def init_ui(self):
@@ -39,7 +40,7 @@ class ProcessTab(Qw.QWidget):
         pass
 
 
-class GraphsTab(Qw.QWidget):
+class GraphsTab(Qw.QGroupBox):
 
     def __init__(self, parent):
         super().__init__()
@@ -48,6 +49,7 @@ class GraphsTab(Qw.QWidget):
         self.x_values = list(range(-self.x_range, 1))
         self.cpu_data = []
         self.mem_info = []
+        self.setMinimumSize(*TAB_MINIMUM_SIZE)
         self.init_ui()
 
     def init_ui(self):
@@ -65,8 +67,6 @@ class GraphsTab(Qw.QWidget):
         self.mem_graph.setMinimumSize(100, 100)
         self.layout.addWidget(self.mem_graph, 1, 0)
 
-        self.setMinimumSize(self.sizeHint())
-
     def update_info(self):
         update_time = time.time()
         self.cpu_data.append([update_time, psutil.cpu_percent()])
@@ -79,18 +79,23 @@ class GraphsTab(Qw.QWidget):
         self.clear_garbage(update_time)
 
     def passive_update(self):
-        self.update_info()
+        if self.main.current_tab() != self:
+            update_time = time.time()
+            self.cpu_data.append([update_time, psutil.cpu_percent()])
+            self.mem_info.append([update_time, psutil.virtual_memory().percent])
+            self.clear_garbage(update_time)
 
     def clear_garbage(self, cur_time):
         self.cpu_data = [e for e in self.cpu_data if e[0] - cur_time >= -self.x_range]
         self.mem_info = [e for e in self.mem_info if e[0] - cur_time >= -self.x_range]
 
 
-class SettingsTab(Qw.QWidget):
+class SettingsTab(Qw.QGroupBox):
 
     def __init__(self, parent):
         super().__init__()
         self.main = parent
+        self.setMinimumSize(*TAB_MINIMUM_SIZE)
         self.init_ui()
         self.check = False
 
@@ -116,7 +121,7 @@ class SettingsTab(Qw.QWidget):
 
         self.check_b = Qw.QCheckBox(self)
         self.check_b.move(20, 70)
-        self.check_b.setText('Run at startup')
+        self.check_b.setText('Run on startup')
 
         self.button = Qw.QPushButton(self)
         self.button.setText('Apply')
@@ -170,6 +175,7 @@ class Main:
         self.main_window = Qw.QWidget()
         self.main_window.setWindowTitle(APP_NAME)
         self.main_window.setGeometry(300, 300, 300, 300)
+        self.main_window.setMinimumSize(300, 300)
         self.layout = Qw.QVBoxLayout(self.main_window)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
@@ -183,26 +189,22 @@ class Main:
         self.layout.addWidget(self.tabs)
 
         self.scroll = Qw.QScrollArea(self.main_window)
-        self.scroll.setMinimumSize(*TAB_MINIMUM_SIZE)
-        self.scroll.setWidgetResizable(True)
+        self.scroll.layout = Qw.QVBoxLayout(self.scroll)
+        self.scroll.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.addWidget(self.scroll)
 
         self.tab_ind = 0
         self.tab_widgets = [ProcessTab(self), GraphsTab(self), SettingsTab(self)]
-        self.scroll.setWidget(self.tab_widgets[0])
+        self.scroll.layout.addWidget(self.tab_widgets[0])
 
     def change_tab(self, ind):
+        self.current_tab().setParent(None)
         self.tab_ind = ind
-        self.layout.removeWidget(self.scroll)
-        self.scroll = Qw.QScrollArea(self.main_window)
-        self.scroll.setMinimumSize(*TAB_MINIMUM_SIZE)
-        self.scroll.setWidgetResizable(True)
-        self.layout.addWidget(self.scroll)
         self.tab_widgets[ind].update_info()
-        self.scroll.setWidget(self.tab_widgets[ind])
+        self.scroll.layout.addWidget(self.tab_widgets[ind])
 
     def update_info(self):
-        self.tab_widgets[self.tab_ind].update_info()
+        self.current_tab().update_info()
 
     def passive_update(self):
         for i in self.tab_widgets:
@@ -216,6 +218,9 @@ class Main:
             self.kill_timers()
             self.init_timers()
             self.start_timers()
+
+    def current_tab(self):
+        return self.tab_widgets[self.tab_ind]
 
     def show(self):
         self.main_window.show()
