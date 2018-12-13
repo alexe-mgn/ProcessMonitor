@@ -75,7 +75,6 @@ class SettingsTab(Qw.QWidget):
     def apply(self):
         self.main.settings.setValue('passive period',self.spin_pas.value())
         self.main.settings.setValue('update frequency',self.spin_fr.value())
-        self.check = self.check_b.isChecked()
         self.main.read_settings()
 
     def update_info(self):
