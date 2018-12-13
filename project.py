@@ -46,9 +46,8 @@ class GraphsTab(Qw.QGroupBox):
         super().__init__()
         self.main = parent
         self.x_range = 60
-        self.x_values = list(range(-self.x_range, 1))
         self.cpu_data = []
-        self.mem_info = []
+        self.mem_data = []
         self.setMinimumSize(*TAB_MINIMUM_SIZE)
         self.init_ui()
 
@@ -59,35 +58,37 @@ class GraphsTab(Qw.QGroupBox):
         self.cpu_graph.setXRange(0, -self.x_range)
         self.cpu_graph.setYRange(0, 100)
         self.cpu_graph.setMinimumSize(100, 100)
+        self.cpu_graph.item.setLabel('left', 'CPU load')
         self.layout.addWidget(self.cpu_graph, 0, 0)
 
         self.mem_graph = CustomGraph(self)
         self.mem_graph.setXRange(0, -self.x_range)
         self.mem_graph.setYRange(0, 100)
         self.mem_graph.setMinimumSize(100, 100)
+        self.mem_graph.item.setLabel('left', 'Memory usage')
         self.layout.addWidget(self.mem_graph, 1, 0)
 
     def update_info(self):
         update_time = time.time()
         self.cpu_data.append([update_time, psutil.cpu_percent()])
-        self.mem_info.append([update_time, psutil.virtual_memory().percent])
+        self.mem_data.append([update_time, psutil.virtual_memory().percent])
 
         self.cpu_graph.clear()
         self.cpu_graph.plot([e[0] - update_time for e in self.cpu_data], [e[1] for e in self.cpu_data])
         self.mem_graph.clear()
-        self.mem_graph.plot([e[0] - update_time for e in self.mem_info], [e[1] for e in self.mem_info])
-        self.clear_garbage(update_time)
+        self.mem_graph.plot([e[0] - update_time for e in self.mem_data], [e[1] for e in self.mem_data])
+        self.clear_old_data(update_time)
 
     def passive_update(self):
         if self.main.current_tab() != self:
             update_time = time.time()
             self.cpu_data.append([update_time, psutil.cpu_percent()])
-            self.mem_info.append([update_time, psutil.virtual_memory().percent])
-            self.clear_garbage(update_time)
+            self.mem_data.append([update_time, psutil.virtual_memory().percent])
+            self.clear_old_data(update_time)
 
-    def clear_garbage(self, cur_time):
+    def clear_old_data(self, cur_time):
         self.cpu_data = [e for e in self.cpu_data if e[0] - cur_time >= -self.x_range]
-        self.mem_info = [e for e in self.mem_info if e[0] - cur_time >= -self.x_range]
+        self.mem_data = [e for e in self.mem_data if e[0] - cur_time >= -self.x_range]
 
 
 class SettingsTab(Qw.QGroupBox):
@@ -100,24 +101,32 @@ class SettingsTab(Qw.QGroupBox):
         self.check = False
 
     def init_ui(self):
+        # Labels
         self.label_fr = Qw.QLabel(self)
         self.label_fr.setText('Update Frequency')
         self.label_fr.move(20, 30)
+
         self.label_pas = Qw.QLabel(self)
         self.label_pas.setText('Passive update period')
         self.label_pas.move(20, 50)
 
+        # Frequency input
         self.spin_fr = Qw.QDoubleSpinBox(self)
         self.spin_fr.move(150, 30)
-        self.spin_fr.setMaximum(3600.0)
-        self.spin_fr.setMinimum(1.0)
+        self.spin_fr.setDecimals(3)
+        self.spin_fr.setMaximum(10000.0)
+        self.spin_fr.setMinimum(0.1)
         self.spin_fr.setSingleStep(1.0)
+        self.spin_fr.setValue(self.main.update_frequency)
 
+        # Passive update period input
         self.spin_pas = Qw.QDoubleSpinBox(self)
         self.spin_pas.move(150, 50)
-        self.spin_pas.setMaximum(3600.0)
-        self.spin_pas.setMinimum(1.0)
+        self.spin_pas.setDecimals(3)
+        self.spin_pas.setMaximum(1800.0)
+        self.spin_pas.setMinimum(0.001)
         self.spin_pas.setSingleStep(1.0)
+        self.spin_pas.setValue(self.main.passive_period)
 
         self.check_b = Qw.QCheckBox(self)
         self.check_b.move(20, 70)
@@ -172,6 +181,7 @@ class Main:
         self.passive_timer.killTimer(self.passive_timer.timerId())
 
     def init_ui(self):
+        # Main window
         self.main_window = Qw.QWidget()
         self.main_window.setWindowTitle(APP_NAME)
         self.main_window.setGeometry(300, 300, 300, 300)
@@ -180,6 +190,7 @@ class Main:
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
 
+        # Tabs bar
         self.tabs = Qw.QTabBar()
         self.tabs.setFixedHeight(20)
         self.tabs.addTab('Processes')
@@ -188,11 +199,13 @@ class Main:
         self.tabs.currentChanged.connect(self.change_tab)
         self.layout.addWidget(self.tabs)
 
+        # Tab scroll area
         self.scroll = Qw.QScrollArea(self.main_window)
         self.scroll.layout = Qw.QVBoxLayout(self.scroll)
         self.scroll.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.addWidget(self.scroll)
 
+        # Tabs init
         self.tab_ind = 0
         self.tab_widgets = [ProcessTab(self), GraphsTab(self), SettingsTab(self)]
         self.scroll.layout.addWidget(self.tab_widgets[0])
