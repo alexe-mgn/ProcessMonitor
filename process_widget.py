@@ -148,6 +148,8 @@ class ProcessWidget(Qw.QGroupBox):
         self.graph_cpu.plot(self.cpu_list)
         self.graph_cpu.setFixedHeight(150)
         self.graph_cpu.setXRange(0, -self.x_range)
+        self.graph_cpu.setYRange(0, 100)
+
 
 
         self.ex_inf_lay.addWidget(self.graph_cpu)
