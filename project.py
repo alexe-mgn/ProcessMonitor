@@ -128,10 +128,6 @@ class SettingsTab(Qw.QGroupBox):
         self.spin_pas.setSingleStep(1.0)
         self.spin_pas.setValue(self.main.passive_period)
 
-        self.check_b = Qw.QCheckBox(self)
-        self.check_b.move(20, 70)
-        self.check_b.setText('Run on startup')
-
         self.button = Qw.QPushButton(self)
         self.button.setText('Apply')
         self.button.move(100, 100)
