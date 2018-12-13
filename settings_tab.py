@@ -37,47 +37,47 @@ class GraphsTab(Qw.QWidget):
 
 class SettingsTab(Qw.QWidget):
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent):
+        super().__init__()
+        self.main = parent
         self.init_ui()
         self.freq = 1.0
         self.pass_freq = 1.0
         self.check = False
 
     def init_ui(self):
-        self.label_fr = Qw.QLabel()
+        self.label_fr = Qw.QLabel(self)
         self.label_fr.setText('Update Frequency')
         self.label_fr.move(20, 50)
-        self.label_pas = Qw.QLabel()
+        self.label_pas = Qw.QLabel(self)
         self.label_pas.setText('Passive update period')
         self.label_pas.move(20, 80)
 
-        self.spin_fr = Qw.QDoubleSpinBox()
+        self.spin_fr = Qw.QDoubleSpinBox(self)
         self.spin_fr.move(250, 50)
         self.spin_fr.setMaximum(3600.0)
         self.spin_fr.setMinimum(1.0)
         self.spin_fr.setSingleStep(1.0)
         
-        self.spin_pas = Qw.QDoubleSpinBox()
+        self.spin_pas = Qw.QDoubleSpinBox(self)
         self.spin_pas.move(250, 80)
         self.spin_pas.setMaximum(3600.0)
         self.spin_pas.setMinimum(1.0)
         self.spin_pas.setSingleStep(1.0)
 
-        self.check_b = Qw.QCheckBox()
+        self.check_b = Qw.QCheckBox(self)
         self.check_b.setText('Run at startup')
 
-        self.button = Qw.QPushButton()
+        self.button = Qw.QPushButton(self)
         self.button.setText('Apply')
         self.button.move(100, 400)
-        self.button.clicked.connect(self.apply())
+        self.button.clicked.connect(self.apply)
 
     def apply(self):
-        self.settings = main.settings
         self.pass_freq = self.spin_pas.value()
-        self.freq = self.freq.value()
+        self.freq = self.spin_fr.value()
         self.check = self.check_b.isChecked()
-        main.read_settings()
+        self.main.read_settings()
 
     def update_info(self):
         pass
@@ -135,7 +135,7 @@ class Main:
         self.layout.addWidget(self.scroll)
 
         self.tab_ind = 0
-        self.tab_widgets = [ProcessTab(), GraphsTab(), SettingsTab()]
+        self.tab_widgets = [ProcessTab(), GraphsTab(), SettingsTab(self)]
         self.scroll.setWidget(self.tab_widgets[0])
 
     def change_tab(self, ind):
