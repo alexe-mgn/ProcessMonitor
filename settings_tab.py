@@ -48,29 +48,30 @@ class SettingsTab(Qw.QWidget):
     def init_ui(self):
         self.label_fr = Qw.QLabel(self)
         self.label_fr.setText('Update Frequency')
-        self.label_fr.move(20, 50)
+        self.label_fr.move(20, 30)
         self.label_pas = Qw.QLabel(self)
         self.label_pas.setText('Passive update period')
-        self.label_pas.move(20, 80)
+        self.label_pas.move(20, 50)
 
         self.spin_fr = Qw.QDoubleSpinBox(self)
-        self.spin_fr.move(250, 50)
+        self.spin_fr.move(200, 30)
         self.spin_fr.setMaximum(3600.0)
         self.spin_fr.setMinimum(1.0)
         self.spin_fr.setSingleStep(1.0)
         
         self.spin_pas = Qw.QDoubleSpinBox(self)
-        self.spin_pas.move(250, 80)
+        self.spin_pas.move(200, 50)
         self.spin_pas.setMaximum(3600.0)
         self.spin_pas.setMinimum(1.0)
         self.spin_pas.setSingleStep(1.0)
 
         self.check_b = Qw.QCheckBox(self)
+        self.check_b.move(20,70)
         self.check_b.setText('Run at startup')
 
         self.button = Qw.QPushButton(self)
         self.button.setText('Apply')
-        self.button.move(100, 400)
+        self.button.move(100, 100)
         self.button.clicked.connect(self.apply)
 
     def apply(self):
