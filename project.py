@@ -145,6 +145,18 @@ class SettingsTab(Qw.QGroupBox):
         pass
 
 
+class TrayMenu(Qw.QMenu):
+
+    def __init__(self, parent):
+        super().__init__()
+        self.main = parent
+        self.actions = {'Open': self.main.popup_from_tray,
+                        'Exit': self.main.exit}
+        self.addAction('Open')
+        self.addAction('Exit')
+        self.triggered.connect(lambda action: self.actions[action.text()]())
+
+
 class Main:
 
     def __init__(self):
@@ -180,11 +192,22 @@ class Main:
         # Main window
         self.main_window = Qw.QWidget()
         self.main_window.setWindowTitle(APP_NAME)
+        self.main_window.setWindowIcon(Qg.QIcon(APP_NAME + '.ico'))
+        self.main_window.closeEvent = self.close_handler
         self.main_window.setGeometry(300, 300, 300, 300)
         self.main_window.setMinimumSize(300, 300)
         self.layout = Qw.QVBoxLayout(self.main_window)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
+
+        # Tray icon
+        self.tray = None
+        if Qw.QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray = Qw.QSystemTrayIcon()
+            self.tray.activated.connect(lambda reason: self.popup_from_tray() if reason == 2 else None)
+            self.tray.setIcon(Qg.QIcon(APP_NAME + '.ico'))
+            self.tray.setContextMenu(TrayMenu(self))
+            self.tray.show()
 
         # Tabs bar
         self.tabs = Qw.QTabBar()
@@ -231,8 +254,36 @@ class Main:
     def current_tab(self):
         return self.tab_widgets[self.tab_ind]
 
+    def close_handler(self, event):
+        if self.tray is not None:
+            self.hide_to_tray()
+            event.ignore()
+        else:
+            event.accept()
+
+    def popup_from_tray(self):
+        if not self.shown:
+            self.update_info()
+            self.timer.start()
+            self.show()
+
+    def hide_to_tray(self):
+        if self.shown:
+            self.timer.stop()
+            self.hide()
+
     def show(self):
+        self.shown = True
         self.main_window.show()
+
+    def hide(self):
+        self.shown = False
+        self.main_window.hide()
+
+    def exit(self):
+        self.shown = False
+        self.kill_timers()
+        sys.exit()
 
 
 def except_hook(cls, exception, traceback):
