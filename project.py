@@ -6,7 +6,6 @@ import PyQt5.QtCore as Qc
 import pyqtgraph as Pg
 import time
 
-
 APP_NAME = 'Process Monitor'
 ORG_NAME = 'Project1'
 TAB_MINIMUM_SIZE = [300, 300]
@@ -91,10 +90,43 @@ class SettingsTab(Qw.QWidget):
 
     def __init__(self, parent):
         super().__init__()
+        self.main = parent
         self.init_ui()
+        self.check = False
 
     def init_ui(self):
-        pass
+        self.label_fr = Qw.QLabel(self)
+        self.label_fr.setText('Update Frequency')
+        self.label_fr.move(20, 30)
+        self.label_pas = Qw.QLabel(self)
+        self.label_pas.setText('Passive update period')
+        self.label_pas.move(20, 50)
+
+        self.spin_fr = Qw.QDoubleSpinBox(self)
+        self.spin_fr.move(150, 30)
+        self.spin_fr.setMaximum(3600.0)
+        self.spin_fr.setMinimum(1.0)
+        self.spin_fr.setSingleStep(1.0)
+
+        self.spin_pas = Qw.QDoubleSpinBox(self)
+        self.spin_pas.move(150, 50)
+        self.spin_pas.setMaximum(3600.0)
+        self.spin_pas.setMinimum(1.0)
+        self.spin_pas.setSingleStep(1.0)
+
+        self.check_b = Qw.QCheckBox(self)
+        self.check_b.move(20, 70)
+        self.check_b.setText('Run at startup')
+
+        self.button = Qw.QPushButton(self)
+        self.button.setText('Apply')
+        self.button.move(100, 100)
+        self.button.clicked.connect(self.apply)
+
+    def apply(self):
+        self.main.settings.setValue('passive period', self.spin_pas.value())
+        self.main.settings.setValue('update frequency', self.spin_fr.value())
+        self.main.read_settings()
 
     def update_info(self):
         pass
@@ -106,6 +138,7 @@ class SettingsTab(Qw.QWidget):
 class Main:
 
     def __init__(self):
+        self.timing = False
         self.read_settings()
         self.init_ui()
         self.init_timers()
@@ -120,12 +153,18 @@ class Main:
         self.passive_timer.timeout.connect(self.passive_update)
 
     def start_timers(self):
+        self.timing = True
         self.timer.start()
         self.passive_timer.start()
 
     def stop_timers(self):
+        self.timing = False
         self.timer.stop()
         self.passive_timer.stop()
+
+    def kill_timers(self):
+        self.timer.killTimer(self.timer.timerId())
+        self.passive_timer.killTimer(self.passive_timer.timerId())
 
     def init_ui(self):
         self.main_window = Qw.QWidget()
@@ -173,6 +212,10 @@ class Main:
         self.settings = Qc.QSettings()
         self.update_frequency = float(self.settings.value('update frequency', 10))
         self.passive_period = float(self.settings.value('passive period', 5))
+        if self.timing:
+            self.kill_timers()
+            self.init_timers()
+            self.start_timers()
 
     def show(self):
         self.main_window.show()
