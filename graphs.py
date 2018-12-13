@@ -9,6 +9,7 @@ import time
 
 APP_NAME = 'Process Monitor'
 ORG_NAME = 'Project1'
+TAB_MINIMUM_SIZE = [300, 300]
 
 
 class CustomGraph(Pg.PlotWidget):
@@ -24,8 +25,8 @@ class CustomGraph(Pg.PlotWidget):
 
 class ProcessTab(Qw.QWidget):
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent):
+        super().__init__()
         self.init_ui()
 
     def init_ui(self):
@@ -40,11 +41,12 @@ class ProcessTab(Qw.QWidget):
 
 class GraphsTab(Qw.QWidget):
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent):
+        super().__init__()
+        self.main = parent
         self.x_range = 60
         self.x_values = list(range(-self.x_range, 1))
-        self.cpu_info = []
+        self.cpu_data = []
         self.mem_info = []
         self.init_ui()
 
@@ -67,27 +69,27 @@ class GraphsTab(Qw.QWidget):
 
     def update_info(self):
         update_time = time.time()
-        self.cpu_info.append([update_time, psutil.cpu_percent()])
+        self.cpu_data.append([update_time, psutil.cpu_percent()])
         self.mem_info.append([update_time, psutil.virtual_memory().percent])
 
         self.cpu_graph.clear()
-        self.cpu_graph.plot([e[0] - update_time for e in self.cpu_info], [e[1] for e in self.cpu_info])
+        self.cpu_graph.plot([e[0] - update_time for e in self.cpu_data], [e[1] for e in self.cpu_data])
         self.mem_graph.clear()
         self.mem_graph.plot([e[0] - update_time for e in self.mem_info], [e[1] for e in self.mem_info])
         self.clear_garbage(update_time)
 
     def passive_update(self):
-        pass
+        self.update_info()
 
     def clear_garbage(self, cur_time):
-        self.cpu_info = [e for e in self.cpu_info if e[0] - cur_time >= -self.x_range]
+        self.cpu_data = [e for e in self.cpu_data if e[0] - cur_time >= -self.x_range]
         self.mem_info = [e for e in self.mem_info if e[0] - cur_time >= -self.x_range]
 
 
 class SettingsTab(Qw.QWidget):
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, parent):
+        super().__init__()
         self.init_ui()
 
     def init_ui(self):
@@ -141,17 +143,19 @@ class Main:
         self.layout.addWidget(self.tabs)
 
         self.scroll = Qw.QScrollArea(self.main_window)
+        self.scroll.setMinimumSize(*TAB_MINIMUM_SIZE)
         self.scroll.setWidgetResizable(True)
         self.layout.addWidget(self.scroll)
 
         self.tab_ind = 0
-        self.tab_widgets = [ProcessTab(), GraphsTab(), SettingsTab()]
+        self.tab_widgets = [ProcessTab(self), GraphsTab(self), SettingsTab(self)]
         self.scroll.setWidget(self.tab_widgets[0])
 
     def change_tab(self, ind):
         self.tab_ind = ind
         self.layout.removeWidget(self.scroll)
         self.scroll = Qw.QScrollArea(self.main_window)
+        self.scroll.setMinimumSize(*TAB_MINIMUM_SIZE)
         self.scroll.setWidgetResizable(True)
         self.layout.addWidget(self.scroll)
         self.tab_widgets[ind].update_info()
