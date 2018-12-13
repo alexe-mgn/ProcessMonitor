@@ -6,6 +6,7 @@ import PyQt5.QtCore as Qc
 
 
 APP_NAME = 'Process Monitor'
+ORG_NAME = 'Project1'
 
 
 class ProcessTab(Qw.QWidget):
@@ -54,6 +55,7 @@ class Main:
         self.init_ui()
         self.init_timers()
         self.start_timers()
+        self.write_settings()
 
     def init_timers(self):
         self.timer = Qc.QTimer(self.main_window)
@@ -127,6 +129,7 @@ if __name__ == '__main__':
     sys.excepthook = except_hook
     app = Qw.QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
+    app.setOrganizationName(ORG_NAME)
     main = Main()
     main.show()
     sys.exit(app.exec())
