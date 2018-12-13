@@ -80,7 +80,7 @@ class GraphsTab(Qw.QGroupBox):
         self.clear_old_data(update_time)
 
     def passive_update(self):
-        if self.main.current_tab() != self:
+        if self.main.current_tab() != self or not self.main.shown:
             update_time = time.time()
             self.cpu_data.append([update_time, psutil.cpu_percent()])
             self.mem_data.append([update_time, psutil.virtual_memory().percent])
@@ -189,10 +189,11 @@ class Main:
         self.passive_timer.killTimer(self.passive_timer.timerId())
 
     def init_ui(self):
+        self.icon = Qg.QIcon(APP_NAME + '.ico')
         # Main window
         self.main_window = Qw.QWidget()
         self.main_window.setWindowTitle(APP_NAME)
-        self.main_window.setWindowIcon(Qg.QIcon(APP_NAME + '.ico'))
+        self.main_window.setWindowIcon(self.icon)
         self.main_window.closeEvent = self.close_handler
         self.main_window.setGeometry(300, 300, 300, 300)
         self.main_window.setMinimumSize(300, 300)
@@ -205,7 +206,7 @@ class Main:
         if Qw.QSystemTrayIcon.isSystemTrayAvailable():
             self.tray = Qw.QSystemTrayIcon()
             self.tray.activated.connect(lambda reason: self.popup_from_tray() if reason == 2 else None)
-            self.tray.setIcon(Qg.QIcon(APP_NAME + '.ico'))
+            self.tray.setIcon(self.icon)
             self.tray.setContextMenu(TrayMenu(self))
             self.tray.show()
 
@@ -271,6 +272,7 @@ class Main:
         if self.shown:
             self.timer.stop()
             self.hide()
+            self.tray.showMessage('Notification', 'Application minimized to tray', self.icon, 1000)
 
     def show(self):
         self.shown = True
@@ -283,6 +285,8 @@ class Main:
     def exit(self):
         self.shown = False
         self.kill_timers()
+        if self.tray is not None:
+            self.tray.hide()
         sys.exit()
 
 
