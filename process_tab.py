@@ -10,7 +10,6 @@ APP_NAME = 'Process Monitor'
 ORG_NAME = 'Project1'
 TAB_MINIMUM_SIZE = [300, 300]
 
-
 class CustomGraph(Pg.PlotWidget):
 
     def __init__(self, parent=None):
@@ -184,6 +183,7 @@ class ProcessWidget(Qw.QGroupBox):
         self.processes = [e for e in psutil.process_iter() if e.name() == self.proc_name]
 
     def update_info(self):
+        self.delete_dead_proc()
         update_time=time.time()
         self.cp_label.setText('%.1f%%' % (self.count_cp(),))
         self.memory_label.setText('%.1f%%' % (self.count_memory(),))
@@ -218,7 +218,14 @@ class ProcessWidget(Qw.QGroupBox):
         return len(self.processes)
 
     def delete_dead_proc(self):
-        pass
+        for i in self.processes:
+            if psutil.pid_exists(i.pid) is False:
+                self.procs[self.processes.index(i)].hide()
+                self.parent().resize(self.parent().size().width(), self.parent().sizeHint().height())
+                del self.procs[self.processes.index(i)]
+                del self.processes[self.processes.index(i)]
+
+
 
 
 
@@ -236,7 +243,7 @@ class ProcessTab(Qw.QWidget):
         for e in range(len(self.get_processes())):
             self.proc_wds.append(ProcessWidget(self,proc_name=self.get_processes()[e]))
             self.layout.addWidget(self.proc_wds[e])
-
+        self.setFixedHeight(self.sizeHint().height())
 
     def update_info(self):
         self.delete_dead_proc()
@@ -252,9 +259,12 @@ class ProcessTab(Qw.QWidget):
         return self.processes
 
     def delete_dead_proc(self):
-        for i in self.processes:
-            if i not in list(map(lambda e: e.name(),list( psutil.process_iter()))):
-                del self.processes[self.processes.index(i)]
+        for i in self.get_processes():
+            if i not in list(map(lambda e: e.name(),list(psutil.process_iter()))):
+                self.proc_wds[self.get_processes().index(i)].hide()
+                self.parent().resize(self.parent().size().width(), self.parent().sizeHint().height())
+                del self.proc_wds[self.get_processes().index(i)]
+                del self.get_processes()[self.get_processes().index(i)]
 
 class SettingsTab(Qw.QWidget):
 
