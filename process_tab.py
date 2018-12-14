@@ -67,11 +67,10 @@ class ExtraProcessWidget(Qw.QGroupBox):
 
 class ProcessWidget(Qw.QGroupBox):
 
-    def __init__(self, parent=None, proc_name=None, proc_type=''):
+    def __init__(self, parent=None, proc_name=None):
         super().__init__(parent)
         self.x_range = 60
         self.expanded = False
-        self.proc_type = proc_type
         self.proc_name = proc_name
         style = 'QLabel {font-size: 16px;}'
 
