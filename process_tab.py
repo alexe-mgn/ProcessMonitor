@@ -240,6 +240,31 @@ class ProcessTab(Qw.QWidget):
 
         self.proc_wds=[]
         self.layout = Qw.QVBoxLayout(self)
+
+        self.layout.setContentsMargins(2, 2, 2, 2)
+        self.layout.setSpacing(2)
+        self.widget1 = Qw.QGroupBox()
+        self.widget1.setMaximumWidth(700)
+        self.extralay = Qw.QHBoxLayout(self.widget1)
+        self.extralay.setContentsMargins(5, 2, 5, 2)
+        self.widget1.setFixedHeight(30)
+        self.label_name = Qw.QLabel()
+        self.label_name.setText('Name')
+        self.extralay.addWidget(self.label_name,5)
+        self.label_cpu = Qw.QLabel()
+        self.label_cpu.setText('CPU')
+        self.extralay.addWidget(self.label_cpu,1)
+        self.label_mem = Qw.QLabel()
+        self.label_mem.setText('Mem Usage')
+        self.extralay.addWidget(self.label_mem,1)
+        self.label_count = Qw.QLabel()
+        self.label_count.setText('Count of processes')
+        self.extralay.addWidget(self.label_count,2)
+        self.label_type=Qw.QLabel()
+        self.label_type.setText('Type')
+        self.extralay.addWidget(self.label_type,3)
+        self.layout.addWidget(self.widget1)
+
         for e in range(len(self.get_processes())):
             self.proc_wds.append(ProcessWidget(self,proc_name=self.get_processes()[e]))
             self.layout.addWidget(self.proc_wds[e])
