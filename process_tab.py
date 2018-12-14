@@ -25,8 +25,9 @@ class CustomGraph(Pg.PlotWidget):
 class ExtraProcessWidget(Qw.QGroupBox):
     def __init__(self, parent=None, proc=None):
         super().__init__(parent)
-        layout = Qw.QHBoxLayout(self)
         self.proc = proc
+        
+        layout = Qw.QHBoxLayout(self)
         self.pid_label = Qw.QLabel()
         self.pid_label.setText(str(self.proc.pid))
         layout.addWidget(self.pid_label)
@@ -62,29 +63,36 @@ class ProcessWidget(Qw.QGroupBox):
 
     def __init__(self, parent=None, proc_name=None, proc_type=''):
         super().__init__(parent)
+
+        self.count_clicks = 0
+        self.get_processes()
+        self.memory_list = []
+        self.cpu_list = []
+        self.procs = []
         self.x_range = 60
         self.expanded = False
         self.proc_type = proc_type
         self.proc_name = proc_name
+
         self.lay = Qw.QVBoxLayout(self)
         self.lay.setContentsMargins(5, 5, 5, 5)
+
+        # Widget for main process
         self.header = Qw.QGroupBox(self)
         self.header.setFixedHeight(40)
         self.header.mousePressEvent = lambda *args: self.popup_resize()
         layout = Qw.QHBoxLayout(self.header)
         layout.setContentsMargins(10, 2, 10, 2)
         self.lay.addWidget(self.header)
-        # self.setMinimumHeight(self.sizeHint().height())
         self.setFixedHeight(self.sizeHint().height())
-        # self.setFixedHeight(60)
         self.setMinimumWidth(300)
         self.setMaximumWidth(700)
 
+        # Labels for characteristics of process
         style = 'QLabel {font-size: 16px;}'
         self.header.setStyleSheet(style)
         self.name_label = Qw.QLabel()
         self.name_label.setText(self.proc_name)
-
         layout.addWidget(self.name_label, 5)
         self.cp_label = Qw.QLabel()
         layout.addWidget(self.cp_label, 1)
@@ -97,16 +105,21 @@ class ProcessWidget(Qw.QGroupBox):
         layout.addWidget(self.type_label, 3)
         self.get_processes()
 
+        # Widget for additional information
         self.more_info = Qw.QGroupBox(self)
         self.more_info.hide()
         self.lay.addWidget(self.more_info)
         self.ex_inf_lay = Qw.QVBoxLayout(self.more_info)
+        self.extralay.insertSpacing(0, 12)
+        self.extralay.insertSpacing(4, 27)
 
+        # Widget for subprocesses
         self.more_proc = Qw.QWidget(self.more_info)
-
         self.lay2 = Qw.QVBoxLayout(self.more_proc)
         self.lay2.setContentsMargins(2, 2, 2, 2)
         self.lay2.setSpacing(2)
+
+        # Widget for names of columns
         self.widget1 = Qw.QGroupBox()
         self.extralay = Qw.QHBoxLayout(self.widget1)
         self.extralay.setContentsMargins(5, 2, 5, 2)
@@ -122,49 +135,37 @@ class ProcessWidget(Qw.QGroupBox):
         self.extralay.addWidget(self.label_mem)
         self.ex_inf_lay.addWidget(self.widget1)
 
+        # Scroll area in subprocesses widget
         self.scroll_area = Qw.QScrollArea(self.more_info)
         self.scroll_area.setVerticalScrollBarPolicy(Qc.Qt.ScrollBarAlwaysOn)
         self.scroll_area.setWidget(self.more_proc)
         self.scroll_area.setFixedHeight(200)
         self.scroll_area.setWidgetResizable(True)
-
-        self.extralay.insertSpacing(0, 12)
-        self.extralay.insertSpacing(4, 27)
-
         self.ex_inf_lay.addWidget(self.scroll_area)
-
-        self.procs = []
-
         self.lay2.setAlignment(Qc.Qt.AlignTop)
 
+        # Subprocesses
         for i in range(len(self.processes)):
             self.procs.append(ExtraProcessWidget(proc=self.processes[i]))
             self.procs[i].setFixedHeight(30)
             self.lay2.addWidget(self.procs[i])
 
-        self.count_clicks = 0
-        self.get_processes()
-        self.memory_list = []
-        self.cpu_list = []
 
+        # CPU Graphic
         self.graph_cpu = CustomGraph(self.more_info)
         self.graph_cpu.plot(self.cpu_list)
         self.graph_cpu.setFixedHeight(150)
         self.graph_cpu.setXRange(0, -self.x_range)
         self.graph_cpu.setYRange(0, 100)
         self.graph_cpu.setLabel('left','CPU')
-
-
         self.ex_inf_lay.addWidget(self.graph_cpu)
 
+        # Memory Graphic
         self.graph_mem = CustomGraph(self.more_info)
         self.graph_mem.plot(self.memory_list)
         self.graph_mem.setFixedHeight(150)
         self.graph_mem.setXRange(0, -self.x_range)
         self.graph_mem.setLabel('left','Memory usage')
-
-
-
         self.ex_inf_lay.addWidget(self.graph_mem)
 
         self.update_info()
@@ -194,6 +195,7 @@ class ProcessWidget(Qw.QGroupBox):
             for i in self.procs:
                 i.update_info()
 
+        # Updating Graphics
         self.graph_cpu.clear()
         self.graph_cpu.plot([e[0] - update_time for e in self.cpu_list], [e[1] for e in self.cpu_list])
         self.graph_mem.clear()
@@ -203,7 +205,6 @@ class ProcessWidget(Qw.QGroupBox):
     def clear_garbage(self, cur_time):
         self.cpu_list = [e for e in self.cpu_list if e[0] - cur_time >= -self.x_range]
         self.memory_list = [e for e in self.memory_list if e[0] - cur_time >= -self.x_range]
-
 
     def passive_update(self):
         self.update_info()
@@ -241,8 +242,7 @@ class ProcessTab(Qw.QWidget):
         self.proc_wds=[]
         self.layout = Qw.QVBoxLayout(self)
 
-        self.layout.setContentsMargins(2, 2, 2, 2)
-        self.layout.setSpacing(2)
+        # Widget for Names of columns
         self.widget1 = Qw.QGroupBox()
         self.widget1.setMaximumWidth(700)
         self.extralay = Qw.QHBoxLayout(self.widget1)
@@ -265,10 +265,11 @@ class ProcessTab(Qw.QWidget):
         self.extralay.addWidget(self.label_type,3)
         self.layout.addWidget(self.widget1)
 
+        # Processes
         for e in range(len(self.get_processes())):
             self.proc_wds.append(ProcessWidget(self,proc_name=self.get_processes()[e]))
             self.layout.addWidget(self.proc_wds[e])
-        self.setFixedHeight(self.sizeHint().height())
+
 
     def update_info(self):
         self.delete_dead_proc()
