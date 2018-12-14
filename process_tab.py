@@ -101,9 +101,9 @@ class ProcessWidget(Qw.QGroupBox):
         layout.addWidget(self.memory_label, 1)
         self.count_proc_label = Qw.QLabel()
         layout.addWidget(self.count_proc_label, 2)
-        self.type_label = Qw.QLabel()
-        self.type_label.setText(self.proc_type)
-        layout.addWidget(self.type_label, 3)
+
+
+
 
         self.more_info = Qw.QGroupBox(self)
         self.more_info.hide()
@@ -275,6 +275,27 @@ class ProcessTab(Qw.QWidget):
         self.layout = Qw.QVBoxLayout(self)
         self.processes = self.get_processes()
         self.widgets = {}
+
+         # Widget for Names of columns
+        self.widget1 = Qw.QGroupBox()
+        self.widget1.setMaximumWidth(700)
+        self.extralay = Qw.QHBoxLayout(self.widget1)
+        self.extralay.setContentsMargins(5, 2, 5, 2)
+        self.widget1.setFixedHeight(30)
+        self.label_name = Qw.QLabel()
+        self.label_name.setText('Name')
+        self.extralay.addWidget(self.label_name,5)
+        self.label_cpu = Qw.QLabel()
+        self.label_cpu.setText('CPU')
+        self.extralay.addWidget(self.label_cpu,1)
+        self.label_mem = Qw.QLabel()
+        self.label_mem.setText('Mem Usage')
+        self.extralay.addWidget(self.label_mem,1)
+        self.label_count = Qw.QLabel()
+        self.label_count.setText('Count of processes')
+        self.extralay.addWidget(self.label_count,2)
+        self.layout.addWidget(self.widget1)
+
         for i in self.processes:
             wid = ProcessWidget(self, proc_name=i)
             self.layout.addWidget(wid)
