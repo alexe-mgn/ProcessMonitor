@@ -26,7 +26,7 @@ class ExtraProcessWidget(Qw.QGroupBox):
     def __init__(self, parent=None, proc=None):
         super().__init__(parent)
         self.proc = proc
-        
+
         layout = Qw.QHBoxLayout(self)
         self.pid_label = Qw.QLabel()
         self.pid_label.setText(str(self.proc.pid))
@@ -65,7 +65,6 @@ class ProcessWidget(Qw.QGroupBox):
         super().__init__(parent)
 
         self.count_clicks = 0
-        self.get_processes()
         self.memory_list = []
         self.cpu_list = []
         self.procs = []
@@ -73,6 +72,7 @@ class ProcessWidget(Qw.QGroupBox):
         self.expanded = False
         self.proc_type = proc_type
         self.proc_name = proc_name
+        self.get_processes()
 
         self.lay = Qw.QVBoxLayout(self)
         self.lay.setContentsMargins(5, 5, 5, 5)
@@ -110,8 +110,6 @@ class ProcessWidget(Qw.QGroupBox):
         self.more_info.hide()
         self.lay.addWidget(self.more_info)
         self.ex_inf_lay = Qw.QVBoxLayout(self.more_info)
-        self.extralay.insertSpacing(0, 12)
-        self.extralay.insertSpacing(4, 27)
 
         # Widget for subprocesses
         self.more_proc = Qw.QWidget(self.more_info)
@@ -122,6 +120,8 @@ class ProcessWidget(Qw.QGroupBox):
         # Widget for names of columns
         self.widget1 = Qw.QGroupBox()
         self.extralay = Qw.QHBoxLayout(self.widget1)
+        self.extralay.insertSpacing(0, 12)
+        self.extralay.insertSpacing(4, 27)
         self.extralay.setContentsMargins(5, 2, 5, 2)
         self.widget1.setFixedHeight(30)
         self.label_name = Qw.QLabel()
