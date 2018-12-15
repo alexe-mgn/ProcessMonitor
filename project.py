@@ -56,10 +56,17 @@ class ExtraProcessWidget(Qw.QGroupBox):
         return self.human_read_format(self.proc.memory_info().rss)
 
     def memory_percent(self):
-        return self.proc.memory_percent()
+        memory_percent = self.proc.memory_percent()
+        self.memory_label.setText(self.count_memory())
+        return memory_percent
 
     def cpu_percent(self):
-        return self.proc.cpu_percent()
+        cpu_percent = self.proc.cpu_percent()
+        self.cp_label.setText('%.3f%%' % (cpu_percent,))
+        return cpu_percent
+
+    def exists(self):
+        return psutil.pid_exists(self.pid)
 
     @staticmethod
     def human_read_format(size):
@@ -76,6 +83,8 @@ class ProcessWidget(Qw.QGroupBox):
 
     def __init__(self, parent=None, proc_name=None):
         super().__init__(parent)
+        self.mem_load = 0
+        self.cp_load = 0
         self.x_range = 60
         self.expanded = False
         self.proc_name = proc_name
@@ -195,7 +204,7 @@ class ProcessWidget(Qw.QGroupBox):
         self.parent().adjust()
 
     def get_pids(self):
-        return set(e.pid for e in self.process_iter() if e.name() == self.proc_name)
+        return set(e.pid for e in self.process_iter() if psutil.pid_exists(e.pid) and e.name() == self.proc_name)
 
     def process_iter(self):
         if self.parent() is not None:
@@ -256,12 +265,12 @@ class ProcessWidget(Qw.QGroupBox):
         cp_load, mem_load = 0, 0
         have_subprocs = False
         for k, v in self.widgets.copy().items():
-            if psutil.pid_exists(v.pid):
-                have_subprocs = True
+            try:
                 cp_load += v.cpu_percent()
                 mem_load += v.memory_percent()
-                v.update_info()
-            else:
+                # v.update_info()
+                have_subprocs = True
+            except psutil._exceptions.NoSuchProcess:
                 v.deleteLater()
                 self.proc_box.layout.removeWidget(v)
                 del self.widgets[k]
@@ -476,6 +485,7 @@ class SettingsTab(Qw.QGroupBox):
         self.main.settings.setValue('update frequency', self.spin_fr.value())
         self.main.settings.setValue('graph range', self.graph_inp.value())
         self.main.read_settings()
+        self.main.set_graph_range()
 
     def update_info(self):
         pass
@@ -579,16 +589,16 @@ class Main:
         self.scroll.setWidget(self.tab_widgets[ind])
 
     def update_info(self):
-        self.process_iter = list(psutil.process_iter())
         self.current_tab().update_info()
 
     def passive_update(self):
+        self.process_iter = list(psutil.process_iter())
         for i in self.tab_widgets:
             i.passive_update()
 
     def read_settings(self):
         self.settings = Qc.QSettings()
-        self.update_frequency = float(self.settings.value('update frequency', 10))
+        self.update_frequency = float(self.settings.value('update frequency', 1))
         self.passive_period = float(self.settings.value('passive period', 5))
         self.graph_range = int(self.settings.value('graph range', 1))
         if self.timing:
