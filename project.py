@@ -11,6 +11,13 @@ ORG_NAME = 'Project1'
 TAB_MINIMUM_SIZE = [275, 275]
 
 
+def delayed(parent, function):
+    timer = Qc.QTimer(parent)
+    timer.setSingleShot(True)
+    timer.timeout.connect(function)
+    timer.start(1)
+
+
 class CustomGraph(Pg.PlotWidget):
 
     def __init__(self, parent=None):
@@ -86,63 +93,71 @@ class ProcessWidget(Qw.QGroupBox):
         self.header.setStyleSheet(style)
         self.header.setFixedHeight(40)
         self.header.mousePressEvent = lambda *args: self.popup_resize()
-        layout = Qw.QHBoxLayout(self.header)
-        layout.setContentsMargins(10, 2, 10, 2)
+        header_layout = Qw.QHBoxLayout(self.header)
+        header_layout.setContentsMargins(10, 2, 10, 2)
         self.layout.addWidget(self.header)
-
+        # Header labels
         self.name_label = Qw.QLabel()
         self.name_label.setText(self.proc_name)
-
-        layout.addWidget(self.name_label, 5)
+        header_layout.addWidget(self.name_label, 5)
         self.cp_label = Qw.QLabel()
-        layout.addWidget(self.cp_label, 1)
+        header_layout.addWidget(self.cp_label, 1)
         self.memory_label = Qw.QLabel()
-        layout.addWidget(self.memory_label, 1)
+        header_layout.addWidget(self.memory_label, 1)
         self.count_proc_label = Qw.QLabel()
-        layout.addWidget(self.count_proc_label, 2)
-
+        header_layout.addWidget(self.count_proc_label, 2)
+        
+        # Detailed information popup
         self.more_info = Qw.QGroupBox(self)
         self.more_info.hide()
         self.layout.addWidget(self.more_info)
-        self.ex_inf_lay = Qw.QVBoxLayout(self.more_info)
+        self.more_info.layout = Qw.QVBoxLayout(self.more_info)
 
-        self.more_proc = Qw.QWidget(self.more_info)
-        self.more_proc.adjust = lambda: self.more_proc.setFixedHeight(self.more_proc.sizeHint().height())
+        # Processes group box
+        self.proc_box = Qw.QWidget(self.more_info)
+        self.proc_box.adjust = lambda: self.proc_box.setFixedHeight(self.proc_box.sizeHint().height())
+        self.proc_box.layout = Qw.QVBoxLayout(self.proc_box)
+        self.proc_box.layout.setContentsMargins(2, 2, 2, 2)
+        self.proc_box.layout.setSpacing(2)
+        self.proc_box.layout.setAlignment(Qc.Qt.AlignTop)
 
-        self.layout2 = Qw.QVBoxLayout(self.more_proc)
-        self.layout2.setContentsMargins(2, 2, 2, 2)
-        self.layout2.setSpacing(2)
-        self.widget1 = Qw.QGroupBox()
-        self.extralay = Qw.QHBoxLayout(self.widget1)
-        self.extralay.setContentsMargins(5, 2, 5, 2)
-        self.widget1.setFixedHeight(30)
+        # Process group box header
+        self.proc_box_header = Qw.QGroupBox()
+        proc_header_layout = Qw.QHBoxLayout(self.proc_box_header)
+        proc_header_layout.setContentsMargins(5, 2, 5, 2)
+        self.proc_box_header.setFixedHeight(30)
+
         self.label_name = Qw.QLabel()
         self.label_name.setText('PID')
-        self.extralay.addWidget(self.label_name)
+        proc_header_layout.addWidget(self.label_name)
         self.label_cpu = Qw.QLabel()
         self.label_cpu.setText('CPU')
-        self.extralay.addWidget(self.label_cpu)
+        proc_header_layout.addWidget(self.label_cpu)
         self.label_mem = Qw.QLabel()
         self.label_mem.setText('Mem Usage')
-        self.extralay.addWidget(self.label_mem)
-        self.ex_inf_lay.addWidget(self.widget1)
+        proc_header_layout.addWidget(self.label_mem)
+        self.more_info.layout.addWidget(self.proc_box_header)
 
+        proc_header_layout.insertSpacing(0, 12)
+        proc_header_layout.insertSpacing(4, 27)
+
+        # Process group box scroll area
         self.scroll_area = Qw.QScrollArea(self.more_info)
         self.scroll_area.setVerticalScrollBarPolicy(Qc.Qt.ScrollBarAlwaysOn)
-        self.scroll_area.setWidget(self.more_proc)
+        self.scroll_area.setWidget(self.proc_box)
         self.scroll_area.setFixedHeight(200)
         self.scroll_area.setWidgetResizable(True)
+        self.more_info.layout.addWidget(self.scroll_area)
 
-        self.extralay.insertSpacing(0, 12)
-        self.extralay.insertSpacing(4, 27)
+        # Initialize subprocesses
+        for i in self.get_pids():
+            wid = ExtraProcessWidget(pid=i)
+            self.proc_box.layout.addWidget(wid)
+            self.widgets[i] = wid
+        self.proc_box.adjust()
+        delayed(self, self.proc_box.adjust)
 
-        self.ex_inf_lay.addWidget(self.scroll_area)
-
-        self.layout2.setAlignment(Qc.Qt.AlignTop)
-
-        self.add_new()
-
-        self.count_clicks = 0
+        # Graph data storage
         self.memory_list = []
         self.cpu_list = []
 
@@ -152,16 +167,15 @@ class ProcessWidget(Qw.QGroupBox):
         self.graph_cpu.setXRange(0, -self.x_range)
         self.graph_cpu.setYRange(0, 100)
         self.graph_cpu.setLabel('left', 'CPU')
-
-        self.ex_inf_lay.addWidget(self.graph_cpu)
+        self.more_info.layout.addWidget(self.graph_cpu)
 
         self.graph_mem = CustomGraph(self.more_info)
         self.graph_mem.plot(self.memory_list)
         self.graph_mem.setFixedHeight(150)
         self.graph_mem.setXRange(0, -self.x_range)
+        self.graph_mem.setYRange(0, 100)
         self.graph_mem.setLabel('left', 'Memory usage')
-
-        self.ex_inf_lay.addWidget(self.graph_mem)
+        self.more_info.layout.addWidget(self.graph_mem)
 
         self.update_info()
         self.adjust()
@@ -176,12 +190,18 @@ class ProcessWidget(Qw.QGroupBox):
         else:
             self.more_info.show()
         self.expanded = not self.expanded
-        self.more_proc.adjust()
+        self.proc_box.adjust()
         self.adjust()
         self.parent().adjust()
 
     def get_pids(self):
-        return set(e.pid for e in psutil.process_iter() if e.name() == self.proc_name)
+        return set(e.pid for e in self.process_iter() if e.name() == self.proc_name)
+
+    def process_iter(self):
+        if self.parent() is not None:
+            return self.parent().process_iter()
+        else:
+            return []
 
     def add_new(self):
         np = self.get_pids()
@@ -189,17 +209,15 @@ class ProcessWidget(Qw.QGroupBox):
             self.remove()
         new = np - set(self.widgets.keys())
         if len(new) > 0:
-            lst = [psutil.Process(e).name() for e in new]
             for i in new:
                 wid = ExtraProcessWidget(pid=i)
-                self.layout2.addWidget(wid)
+                self.proc_box.layout.addWidget(wid)
                 self.widgets[i] = wid
-            self.more_proc.adjust()
+            self.proc_box.adjust()
+            delayed(self, self.proc_box.adjust)
 
     def update_info(self):
-        if self.expanded:
-            self.update_children()
-        self.count_res()
+        self.count_res_usage()
         self.cp_label.setText('%.1f%%' % (self.mem_load,))
         self.memory_label.setText('%.1f%%' % (self.cp_load,))
         self.count_proc_label.setText(str(self.count_proc_num()))
@@ -208,19 +226,14 @@ class ProcessWidget(Qw.QGroupBox):
         if self.expanded:
             self.update_graphs()
 
-    def update_children(self):
-        for k, v in self.widgets.copy().items():
-            if psutil.pid_exists(k):
-                v.update_info()
-            else:
-                self.layout2.removeWidget(v)
-                v.deleteLater()
-                del self.widgets[k]
-                self.more_proc.setFixedHeight(self.more_proc.sizeHint().height())
-
     def passive_update(self):
         self.add_new()
         self.save_graph_data()
+
+    def set_graph_range(self, rng):
+        self.x_range = rng * 60
+        self.graph_cpu.setXRange(0, -self.x_range)
+        self.graph_mem.setXRange(0, -self.x_range)
 
     def save_graph_data(self):
         update_time = time.time()
@@ -239,14 +252,20 @@ class ProcessWidget(Qw.QGroupBox):
         self.cpu_list = [e for e in self.cpu_list if e[0] - cur_time >= -self.x_range]
         self.memory_list = [e for e in self.memory_list if e[0] - cur_time >= -self.x_range]
 
-    def count_res(self):
+    def count_res_usage(self):
         cp_load, mem_load = 0, 0
         have_subprocs = False
-        for i in self.widgets.values():
-            if psutil.pid_exists(i.pid):
+        for k, v in self.widgets.copy().items():
+            if psutil.pid_exists(v.pid):
                 have_subprocs = True
-                cp_load += i.cpu_percent()
-                mem_load += i.memory_percent()
+                cp_load += v.cpu_percent()
+                mem_load += v.memory_percent()
+                v.update_info()
+            else:
+                v.deleteLater()
+                self.proc_box.layout.removeWidget(v)
+                del self.widgets[k]
+                self.proc_box.adjust()
         if not have_subprocs:
             self.remove()
         else:
@@ -257,7 +276,8 @@ class ProcessWidget(Qw.QGroupBox):
         return len(self.widgets)
 
     def remove(self):
-        self.parent().delete_element(self.proc_name)
+        if self.parent() is not None:
+            self.parent().delete_element(self.proc_name)
 
 
 class ProcessTab(Qw.QWidget):
@@ -273,24 +293,26 @@ class ProcessTab(Qw.QWidget):
         self.widgets = {}
 
         # Widget for Names of columns
-        self.widget1 = Qw.QGroupBox()
-        self.widget1.setMaximumWidth(700)
-        self.extralay = Qw.QHBoxLayout(self.widget1)
-        self.extralay.setContentsMargins(5, 2, 5, 2)
-        self.widget1.setFixedHeight(30)
+        self.header = Qw.QGroupBox()
+        self.header.setMaximumWidth(700)
+        header_layout = Qw.QHBoxLayout(self.header)
+        header_layout.setContentsMargins(5, 2, 5, 2)
+        self.header.setFixedHeight(30)
         self.label_name = Qw.QLabel()
         self.label_name.setText('Name')
-        self.extralay.addWidget(self.label_name, 5)
+        header_layout.addWidget(self.label_name, 5)
         self.label_cpu = Qw.QLabel()
         self.label_cpu.setText('CPU')
-        self.extralay.addWidget(self.label_cpu, 1)
+        header_layout.addWidget(self.label_cpu, 1)
         self.label_mem = Qw.QLabel()
-        self.label_mem.setText('Mem Usage')
-        self.extralay.addWidget(self.label_mem, 1)
+        self.label_mem.setText('Mem usage')
+        header_layout.addWidget(self.label_mem, 1)
         self.label_count = Qw.QLabel()
-        self.label_count.setText('Count of processes')
-        self.extralay.addWidget(self.label_count, 2)
-        self.layout.addWidget(self.widget1)
+        self.label_count.setText('proc. count')
+        header_layout.addWidget(self.label_count, 2)
+        self.layout.addWidget(self.header)
+
+        header_layout.insertSpacing(0, 20)
 
         for i in self.processes:
             wid = ProcessWidget(self, proc_name=i)
@@ -320,10 +342,7 @@ class ProcessTab(Qw.QWidget):
                 self.layout.addWidget(wid)
                 self.widgets[i] = wid
             self.adjust()
-            timer = Qc.QTimer(self)
-            timer.setSingleShot(True)
-            timer.timeout.connect(self.adjust)
-            timer.start(1)
+            delayed(self, self.adjust)
         self.processes = np
 
     def passive_update(self):
@@ -331,9 +350,15 @@ class ProcessTab(Qw.QWidget):
         for k, v in self.widgets.copy().items():
             v.passive_update()
 
-    @staticmethod
-    def get_processes():
-        return set(map(lambda e: e.name(), list(psutil.process_iter())))
+    def set_graph_range(self, rng):
+        for k, v in self.widgets.items():
+            v.set_graph_range(rng)
+
+    def get_processes(self):
+        return set([e.name() for e in self.process_iter() if psutil.pid_exists(e.pid)])
+
+    def process_iter(self):
+        return self.main.process_iter
 
 
 class GraphsTab(Qw.QGroupBox):
@@ -382,6 +407,11 @@ class GraphsTab(Qw.QGroupBox):
             self.mem_data.append([update_time, psutil.virtual_memory().percent])
             self.clear_old_data(update_time)
 
+    def set_graph_range(self, rng):
+        self.x_range = rng * 60
+        self.cpu_graph.setXRange(0, -self.x_range)
+        self.mem_graph.setXRange(0, -self.x_range)
+
     def clear_old_data(self, cur_time):
         self.cpu_data = [e for e in self.cpu_data if e[0] - cur_time >= -self.x_range]
         self.mem_data = [e for e in self.mem_data if e[0] - cur_time >= -self.x_range]
@@ -406,6 +436,10 @@ class SettingsTab(Qw.QGroupBox):
         self.label_pas.setText('Passive update period')
         self.label_pas.move(20, 50)
 
+        self.graph_label = Qw.QLabel(self)
+        self.graph_label.setText('Graph range (mins)')
+        self.graph_label.move(20, 70)
+
         # Frequency input
         self.spin_fr = Qw.QDoubleSpinBox(self)
         self.spin_fr.move(150, 30)
@@ -424,6 +458,14 @@ class SettingsTab(Qw.QGroupBox):
         self.spin_pas.setSingleStep(1.0)
         self.spin_pas.setValue(self.main.passive_period)
 
+        # Graph range
+        self.graph_inp = Qw.QSpinBox(self)
+        self.graph_inp.move(150, 70)
+        self.graph_inp.setMaximum(120)
+        self.graph_inp.setMinimum(1)
+        self.graph_inp.setSingleStep(1)
+        self.graph_inp.setValue(self.main.graph_range)
+
         self.button = Qw.QPushButton(self)
         self.button.setText('Apply')
         self.button.move(100, 100)
@@ -432,6 +474,7 @@ class SettingsTab(Qw.QGroupBox):
     def apply(self):
         self.main.settings.setValue('passive period', self.spin_pas.value())
         self.main.settings.setValue('update frequency', self.spin_fr.value())
+        self.main.settings.setValue('graph range', self.graph_inp.value())
         self.main.read_settings()
 
     def update_info(self):
@@ -457,6 +500,7 @@ class Main:
 
     def __init__(self):
         self.timing = False
+        self.process_iter = list(psutil.process_iter())
         self.read_settings()
         self.init_ui()
         self.init_timers()
@@ -525,6 +569,9 @@ class Main:
         self.tab_widgets = [ProcessTab(self), GraphsTab(self), SettingsTab(self)]
         self.scroll.setWidget(self.tab_widgets[0])
 
+        self.set_graph_range()
+        self.update_info()
+
     def change_tab(self, ind):
         self.scroll.takeWidget()
         self.tab_ind = ind
@@ -532,6 +579,7 @@ class Main:
         self.scroll.setWidget(self.tab_widgets[ind])
 
     def update_info(self):
+        self.process_iter = list(psutil.process_iter())
         self.current_tab().update_info()
 
     def passive_update(self):
@@ -542,6 +590,7 @@ class Main:
         self.settings = Qc.QSettings()
         self.update_frequency = float(self.settings.value('update frequency', 10))
         self.passive_period = float(self.settings.value('passive period', 5))
+        self.graph_range = int(self.settings.value('graph range', 1))
         if self.timing:
             self.kill_timers()
             self.init_timers()
@@ -556,6 +605,10 @@ class Main:
             event.ignore()
         else:
             event.accept()
+
+    def set_graph_range(self):
+        self.tab_widgets[0].set_graph_range(self.graph_range)
+        self.tab_widgets[1].set_graph_range(self.graph_range)
 
     def popup_from_tray(self):
         if not self.shown:
