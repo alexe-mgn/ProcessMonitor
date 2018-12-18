@@ -11,23 +11,72 @@ ORG_NAME = 'Project1'
 TAB_MINIMUM_SIZE = [275, 275]
 
 
-def delayed(parent, function):
+# Execute function with delay
+def delayed(parent, func):
     timer = Qc.QTimer(parent)
     timer.setSingleShot(True)
-    timer.timeout.connect(function)
+    timer.timeout.connect(func)
     timer.start(1)
 
 
-class CustomGraph(Pg.PlotWidget):
+class CustomGraph(Qw.QGroupBox):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.item = self.getPlotItem()
+        self.layout = Qw.QGridLayout(self)
+        self.layout.setContentsMargins(5, 5, 5, 5)
+        self.data = []
+        self.cur_range = [0, -60]
+
+        btn_order = ['Year', 'Month', 'Week', 'Day', '6 hours', 'Hour', '15 mins', 'Current'][::-1]
+        btn_count = len(btn_order)
+
+        self.graph = Pg.PlotWidget(self)
+        self.item = self.graph.getPlotItem()
         self.box = self.item.getViewBox()
-        self.setMouseEnabled(False, False)
-        self.setMenuEnabled(False)
-        self.hideButtons()
-        self.item.showGrid(True, True)
+        self.graph.setMouseEnabled(False, False)
+        self.graph.setMenuEnabled(False)
+        self.graph.hideButtons()
+        self.graph.showGrid(True, True)
+        self.layout.addWidget(self.graph, 0, 0, 1, btn_count)
+        '''
+        for n, i in enumerate(btn_order):
+            lbl = Qw.QLabel(i, self)
+            lbl.setFixedSize(lbl.sizeHint())
+            lbl.mousePressEvent = lambda event, ind=n: self.slider.setValue(ind)
+            self.layout.addWidget(lbl, 1, n)
+
+        self.slider = Qw.QSlider(Qc.Qt.Horizontal, self)
+        self.slider.setTickPosition(1)
+        self.slider.setValue(0)
+        self.slider.setRange(0, btn_count - 1)
+        self.slider.setTickInterval(1)
+        self.slider.setSingleStep(1)
+        self.slider.valueChanged.connect(lambda x: print(x))
+
+        self.layout.addWidget(self.slider, 2, 0, 1, btn_count)
+        '''
+
+    def plot(self):
+        update_time = time.time()
+        self.graph.clear()
+        self.graph.plot([e[0] - update_time for e in self.data], [e[1] for e in self.data])
+
+    def append(self, dat):
+        update_time = time.time()
+        while len(self.data) > 0 and self.data[0][0] - update_time < self.cur_range[1] - 10:
+            del self.data[0]
+        self.data.append([time.time(), dat])
+
+    def setLabel(self, *args):
+        self.graph.setLabel(*args)
+
+    def setXRange(self, *args):
+        self.cur_range = args
+        self.graph.setXRange(*self.cur_range)
+
+    def setYRange(self, *args):
+        self.graph.setYRange(*args)
 
 
 class ExtraProcessWidget(Qw.QGroupBox):
@@ -85,7 +134,6 @@ class ProcessWidget(Qw.QGroupBox):
         super().__init__(parent)
         self.mem_load = 0
         self.cp_load = 0
-        self.x_range = 60
         self.expanded = False
         self.proc_name = proc_name
         style = 'QLabel {font-size: 16px;}'
@@ -171,18 +219,16 @@ class ProcessWidget(Qw.QGroupBox):
         self.cpu_list = []
 
         self.graph_cpu = CustomGraph(self.more_info)
-        self.graph_cpu.plot(self.cpu_list)
-        self.graph_cpu.setFixedHeight(150)
-        self.graph_cpu.setXRange(0, -self.x_range)
         self.graph_cpu.setYRange(0, 100)
+        self.graph_cpu.plot()
+        self.graph_cpu.setFixedHeight(170)
         self.graph_cpu.setLabel('left', 'CPU')
         self.more_info.layout.addWidget(self.graph_cpu)
 
         self.graph_mem = CustomGraph(self.more_info)
-        self.graph_mem.plot(self.memory_list)
-        self.graph_mem.setFixedHeight(150)
-        self.graph_mem.setXRange(0, -self.x_range)
         self.graph_mem.setYRange(0, 100)
+        self.graph_mem.plot()
+        self.graph_mem.setFixedHeight(170)
         self.graph_mem.setLabel('left', 'Memory usage')
         self.more_info.layout.addWidget(self.graph_mem)
 
@@ -230,36 +276,28 @@ class ProcessWidget(Qw.QGroupBox):
         self.cp_label.setText('%.1f%%' % (self.cp_load,))
         self.memory_label.setText('%.1f%%' % (self.mem_load,))
         self.count_proc_label.setText(str(self.count_proc_num()))
-        self.save_graph_data()
+        self.add_graph_data()
 
         if self.expanded:
             self.update_graphs()
 
     def passive_update(self):
+        if not self.parent().main.shown or self.parent().main.current_tab() != self.parent():
+            self.count_res_usage()
+            self.add_graph_data()
         self.add_new()
-        self.save_graph_data()
 
     def set_graph_range(self, rng):
-        self.x_range = rng * 60
-        self.graph_cpu.setXRange(0, -self.x_range)
-        self.graph_mem.setXRange(0, -self.x_range)
+        self.graph_cpu.setXRange(0, -rng * 60)
+        self.graph_mem.setXRange(0, -rng * 60)
 
-    def save_graph_data(self):
-        update_time = time.time()
-        self.cpu_list.append([update_time, self.cp_load])
-        self.memory_list.append([update_time, self.mem_load])
-        self.clear_garbage(update_time)
+    def add_graph_data(self):
+        self.graph_cpu.append(self.cp_load)
+        self.graph_mem.append(self.mem_load)
 
     def update_graphs(self):
-        update_time = time.time()
-        self.graph_cpu.clear()
-        self.graph_cpu.plot([e[0] - update_time for e in self.cpu_list], [e[1] for e in self.cpu_list])
-        self.graph_mem.clear()
-        self.graph_mem.plot([e[0] - update_time for e in self.memory_list], [e[1] for e in self.memory_list])
-
-    def clear_garbage(self, cur_time):
-        self.cpu_list = [e for e in self.cpu_list if e[0] - cur_time >= -self.x_range]
-        self.memory_list = [e for e in self.memory_list if e[0] - cur_time >= -self.x_range]
+        self.graph_cpu.plot()
+        self.graph_mem.plot()
 
     def count_res_usage(self):
         cp_load, mem_load = 0, 0
@@ -331,10 +369,11 @@ class ProcessTab(Qw.QWidget):
         self.adjust()
 
     def delete_element(self, name):
-        self.widgets[name].deleteLater()
-        self.layout.removeWidget(self.widgets[name])
-        del self.widgets[name]
-        self.adjust()
+        if name is self.widgets.keys():
+            self.widgets[name].deleteLater()
+            self.layout.removeWidget(self.widgets[name])
+            del self.widgets[name]
+            self.adjust()
 
     def adjust(self):
         self.setFixedHeight(self.sizeHint().height())
@@ -376,9 +415,6 @@ class GraphsTab(Qw.QGroupBox):
     def __init__(self, parent):
         super().__init__()
         self.main = parent
-        self.x_range = 60
-        self.cpu_data = []
-        self.mem_data = []
         self.setMinimumSize(*TAB_MINIMUM_SIZE)
         self.init_ui()
 
@@ -386,45 +422,30 @@ class GraphsTab(Qw.QGroupBox):
         self.layout = Qw.QGridLayout(self)
 
         self.cpu_graph = CustomGraph(self)
-        self.cpu_graph.setXRange(0, -self.x_range)
         self.cpu_graph.setYRange(0, 100)
         self.cpu_graph.setMinimumSize(100, 100)
         self.cpu_graph.item.setLabel('left', 'CPU load')
         self.layout.addWidget(self.cpu_graph, 0, 0)
 
         self.mem_graph = CustomGraph(self)
-        self.mem_graph.setXRange(0, -self.x_range)
         self.mem_graph.setYRange(0, 100)
         self.mem_graph.setMinimumSize(100, 100)
         self.mem_graph.item.setLabel('left', 'Memory usage')
         self.layout.addWidget(self.mem_graph, 1, 0)
 
     def update_info(self):
-        update_time = time.time()
-        self.cpu_data.append([update_time, psutil.cpu_percent()])
-        self.mem_data.append([update_time, psutil.virtual_memory().percent])
-
-        self.cpu_graph.clear()
-        self.cpu_graph.plot([e[0] - update_time for e in self.cpu_data], [e[1] for e in self.cpu_data])
-        self.mem_graph.clear()
-        self.mem_graph.plot([e[0] - update_time for e in self.mem_data], [e[1] for e in self.mem_data])
-        self.clear_old_data(update_time)
+        self.cpu_graph.append(psutil.cpu_percent())
+        self.mem_graph.append(psutil.virtual_memory().percent)
+        self.cpu_graph.plot()
+        self.mem_graph.plot()
 
     def passive_update(self):
         if self.main.current_tab() != self or not self.main.shown:
-            update_time = time.time()
-            self.cpu_data.append([update_time, psutil.cpu_percent()])
-            self.mem_data.append([update_time, psutil.virtual_memory().percent])
-            self.clear_old_data(update_time)
+            self.update_info()
 
     def set_graph_range(self, rng):
-        self.x_range = rng * 60
-        self.cpu_graph.setXRange(0, -self.x_range)
-        self.mem_graph.setXRange(0, -self.x_range)
-
-    def clear_old_data(self, cur_time):
-        self.cpu_data = [e for e in self.cpu_data if e[0] - cur_time >= -self.x_range]
-        self.mem_data = [e for e in self.mem_data if e[0] - cur_time >= -self.x_range]
+        self.cpu_graph.setXRange(0, -rng * 60)
+        self.mem_graph.setXRange(0, -rng * 60)
 
 
 class SettingsTab(Qw.QGroupBox):
