@@ -227,8 +227,8 @@ class ProcessWidget(Qw.QGroupBox):
 
     def update_info(self):
         self.count_res_usage()
-        self.cp_label.setText('%.1f%%' % (self.mem_load,))
-        self.memory_label.setText('%.1f%%' % (self.cp_load,))
+        self.cp_label.setText('%.1f%%' % (self.cp_load,))
+        self.memory_label.setText('%.1f%%' % (self.mem_load,))
         self.count_proc_label.setText(str(self.count_proc_num()))
         self.save_graph_data()
 
@@ -246,8 +246,8 @@ class ProcessWidget(Qw.QGroupBox):
 
     def save_graph_data(self):
         update_time = time.time()
-        self.memory_list.append([update_time, self.cp_load])
-        self.cpu_list.append([update_time, self.mem_load])
+        self.cpu_list.append([update_time, self.cp_load])
+        self.memory_list.append([update_time, self.mem_load])
         self.clear_garbage(update_time)
 
     def update_graphs(self):
@@ -322,6 +322,7 @@ class ProcessTab(Qw.QWidget):
         self.layout.addWidget(self.header)
 
         header_layout.insertSpacing(0, 20)
+        header_layout.insertSpacing(5, 20)
 
         for i in self.processes:
             wid = ProcessWidget(self, proc_name=i)
