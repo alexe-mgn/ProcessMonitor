@@ -6,6 +6,7 @@ import PyQt5.QtCore as Qc
 import pyqtgraph as Pg
 import time
 import sqlite3
+import traceback
 
 APP_NAME = 'Process Monitor'
 DATABASE = 'Process_Data.db'
@@ -13,6 +14,14 @@ ORG_NAME = 'Project1'
 TAB_MINIMUM_SIZE = [275, 275]
 
 db_con = sqlite3.connect(DATABASE)
+
+
+# For one file .exe to work
+def get_file_path(path):
+    if getattr(sys, 'frozen', False):
+        return '\\'.join([sys._MEIPASS, path])
+    else:
+        return path
 
 
 # Execute function with delay
@@ -611,10 +620,6 @@ class SettingsTab(Qw.QGroupBox):
         self.label_pas.setText('Passive update period')
         self.label_pas.move(20, 50)
 
-        self.graph_label = Qw.QLabel(self)
-        self.graph_label.setText('Graph range (mins)')
-        self.graph_label.move(20, 70)
-
         # Frequency input
         self.spin_fr = Qw.QDoubleSpinBox(self)
         self.spin_fr.move(150, 30)
@@ -697,7 +702,7 @@ class Main:
         self.passive_timer.killTimer(self.passive_timer.timerId())
 
     def init_ui(self):
-        self.icon = Qg.QIcon(APP_NAME + '.ico')
+        self.icon = Qg.QIcon(get_file_path(APP_NAME + '.ico'))
         # Main window
         self.main_window = Qw.QWidget()
         self.main_window.setWindowTitle(APP_NAME)
@@ -814,8 +819,15 @@ class Main:
         sys.exit()
 
 
-def except_hook(cls, exception, traceback):
-    sys.__excepthook__(cls, exception, traceback)
+def except_hook(cls, exception, c_traceback):
+    if not getattr(sys, 'frozen', False):
+        sys.__excepthook__(cls, exception, traceback)
+    with open('process_monitor_traceback.txt', mode='a') as error_file:
+        error_file.write('\n' + time.asctime() + '\n')
+        error_file.write(str(time.time()) + 'SSTE\n')
+        error_file.write(str(cls) + '\n')
+        error_file.write(str(exception) + '\n')
+        error_file.write(''.join(traceback.format_tb(c_traceback)) + '\n')
 
 
 if __name__ == '__main__':
