@@ -36,44 +36,55 @@ class CustomGraph(Qw.QGroupBox):
         # 6 hours - 21600
         # day - 86400
         # Таблица отображения оси абсцисс
-        # [max range, unit, tick spacing, axis scale]
+        # [max range, unit index, spacing in current units]
         # [60, 900, 3600, 21600, 86400]
+        self.conversion = [1, 60, 3600, 86400]
+        self.str_units = ['s', 'min', 'hour', 'day']
         self.ticks = [
             [
-                180,
-                's',
-                10,
-                1
+                90,
+                0,
+                5,
             ],
             [
-                900,
-                'mins',
+                180,
+                0,
+                10,
+            ],
+            [
+                720,
                 1,
-                1 / 60
+                .5
+            ],
+            [
+                1200,
+                1,
+                1,
             ],
             [
                 4500,
-                'mins',
+                1,
                 5,
-                1 / 60
             ],
             [
                 10800,
-                'mins',
+                1,
                 10,
-                1 / 60
+            ],
+            [
+                21600,
+                2,
+                .5,
             ],
             [
                 43200,
-                'hours',
+                2,
                 1,
-                1 / 3600
             ],
             [
                 86400,
-                'hours',
                 2,
-                1 / 3600
+                2,
             ]]
         btn_order = ['Day', '6 hours', 'Hour', '15 mins', 'Current'][::-1]
         btn_count = len(btn_order)
@@ -85,18 +96,20 @@ class CustomGraph(Qw.QGroupBox):
 
         # Graph values
         self.graph = Pg.PlotWidget(self)
-        self.graph.installEventFilter(self)
+        # self.installEventFilter(self)
         self.item = self.graph.getPlotItem()
         self.box = self.item.getViewBox()
         self.x_axis = self.item.getAxis('bottom')
 
         # Setting graph options
-        self.box.setLimits(xMax=20)
+        self.box.setLimits(xMin=-604800, xMax=20,
+                           minXRange=5, maxXRange=604800)
         self.x_axis.enableAutoSIPrefix(False)
         self.graph.setMouseEnabled(True, False)
         self.graph.setMenuEnabled(False)
         self.graph.hideButtons()
         self.graph.showGrid(True, True)
+        self.graph.sigRangeChanged.connect(self.adjust_axis)
 
         self.layout.addWidget(self.graph, 0, 0, 1, btn_count)
 
@@ -148,16 +161,21 @@ class CustomGraph(Qw.QGroupBox):
                     self.data_path, extra)
             ).fetchall()
 
-    def eventFilter(self, widget, event):
-        if event.type() == 31:
-            self.adjust_axis()
-        event.accept()
-        return False
-
     def change_range(self, ind):
         self.slider.setValue(ind)
         self.graph.setXRange(-self.slider.ranges[ind], 0)
         self.adjust_axis()
+
+    # Get axis tick string
+    def scale_cord(self, crd, unit_ind):
+        crd = abs(crd)
+        unit = self.conversion[unit_ind]
+        for uuind in range(len(self.conversion) - 1, unit_ind, -1):
+            up_unit = self.conversion[uuind]
+            n = str(crd // up_unit)
+            crd = crd % up_unit
+        n += ' ' + self.str_units[uuind]
+        return '\n'.join(['%g' % (crd / unit), n if crd == 0 else ''])
 
     def adjust_axis(self):
         visible_range = self.graph.visibleRange()
@@ -166,11 +184,20 @@ class CustomGraph(Qw.QGroupBox):
         ln = len(self.ticks)
         while ind < ln - 1 and visible_size > self.ticks[ind][0]:
             ind += 1
-        self.box.setLimits(xMax=visible_size * .1)
-        spacing = self.ticks[ind][2]
-        self.x_axis.setTickSpacing(spacing, spacing / 2)
-        self.x_axis.setScale(self.ticks[ind][3])
-        self.x_axis.setLabel('time', units=self.ticks[ind][1])
+        data = self.ticks[ind]
+        unit_ind = data[1]
+        unit = self.conversion[unit_ind]
+        spacing = int(data[2] * unit)
+        # self.box.setLimits(xMax=visible_size * .1)
+        self.x_axis.setLabel('time', units=self.str_units[unit_ind])
+        major = [(e, self.scale_cord(e, unit_ind)) for e in
+                 range(
+                     0,
+                     int(visible_range.left() - 1),
+                     -spacing)]
+        self.x_axis.setTicks([
+            major
+        ])
 
     def plot(self):
         update_time = time.time()
@@ -367,6 +394,8 @@ class ProcessWidget(Qw.QGroupBox):
         if self.expanded:
             self.scroll_area.verticalScrollBar().setValue(0)
             self.more_info.hide()
+            self.graph_cpu.change_range(0)
+            self.graph_mem.change_range(0)
         else:
             self.more_info.show()
         self.expanded = not self.expanded
@@ -636,7 +665,8 @@ class TrayMenu(Qw.QMenu):
 
 class Main:
 
-    def __init__(self):
+    def __init__(self, app):
+        self.app = app
         self.timing = False
         self.process_iter = list(psutil.process_iter())
         self.read_settings()
@@ -699,6 +729,8 @@ class Main:
 
         # Tab scroll area
         self.scroll = Qw.QScrollArea(self.main_window)
+        self.scroll.eventFilter = self.scroll_event_handler
+        self.scroll.installEventFilter(self.scroll)
         self.scroll.setWidgetResizable(True)
         self.layout.addWidget(self.scroll)
 
@@ -708,6 +740,15 @@ class Main:
         self.scroll.setWidget(self.tab_widgets[0])
 
         self.update_info()
+
+    def scroll_event_handler(self, _, event):
+        if event.type() == 31:
+            cursor_widget = self.app.widgetAt(Qg.QCursor.pos())
+            if cursor_widget.parent().__class__.__name__ == 'PlotWidget':
+                event.ignore()
+                return True
+        event.accept()
+        return False
 
     def change_tab(self, ind):
         self.scroll.takeWidget()
@@ -782,6 +823,6 @@ if __name__ == '__main__':
     app = Qw.QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(ORG_NAME)
-    main = Main()
+    main = Main(app)
     main.show()
     sys.exit(app.exec())
