@@ -5,10 +5,14 @@ import PyQt5.QtGui as Qg
 import PyQt5.QtCore as Qc
 import pyqtgraph as Pg
 import time
+import sqlite3
 
 APP_NAME = 'Process Monitor'
+DATABASE = 'Process_Data.db'
 ORG_NAME = 'Project1'
 TAB_MINIMUM_SIZE = [275, 275]
+
+db_con = sqlite3.connect(DATABASE)
 
 
 # Execute function with delay
@@ -21,29 +25,85 @@ def delayed(parent, func):
 
 class CustomGraph(Qw.QGroupBox):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, data_path=None):
         super().__init__(parent)
-        self.layout = Qw.QGridLayout(self)
-        self.layout.setContentsMargins(5, 5, 5, 5)
-        self.data = []
-        self.cur_range = [0, -60]
 
-        btn_order = ['Year', 'Month', 'Week', 'Day', '6 hours', 'Hour', '15 mins', 'Current'][::-1]
+        # Class values
+        self.connection = db_con
+        self.data_path = data_path
+        # min - 60
+        # hour - 3600
+        # 6 hours - 21600
+        # day - 86400
+        # Таблица отображения оси абсцисс
+        # [max range, unit, tick spacing, axis scale]
+        # [60, 900, 3600, 21600, 86400]
+        self.ticks = [
+            [
+                180,
+                's',
+                10,
+                1
+            ],
+            [
+                900,
+                'mins',
+                1,
+                1 / 60
+            ],
+            [
+                4500,
+                'mins',
+                5,
+                1 / 60
+            ],
+            [
+                10800,
+                'mins',
+                10,
+                1 / 60
+            ],
+            [
+                43200,
+                'hours',
+                1,
+                1 / 3600
+            ],
+            [
+                86400,
+                'hours',
+                2,
+                1 / 3600
+            ]]
+        btn_order = ['Day', '6 hours', 'Hour', '15 mins', 'Current'][::-1]
         btn_count = len(btn_order)
 
+        self.init_storage()
+
+        self.layout = Qw.QGridLayout(self)
+        self.layout.setContentsMargins(5, 5, 5, 5)
+
+        # Graph values
         self.graph = Pg.PlotWidget(self)
+        self.graph.installEventFilter(self)
         self.item = self.graph.getPlotItem()
         self.box = self.item.getViewBox()
-        self.graph.setMouseEnabled(False, False)
+        self.x_axis = self.item.getAxis('bottom')
+
+        # Setting graph options
+        self.box.setLimits(xMax=20)
+        self.x_axis.enableAutoSIPrefix(False)
+        self.graph.setMouseEnabled(True, False)
         self.graph.setMenuEnabled(False)
         self.graph.hideButtons()
         self.graph.showGrid(True, True)
+
         self.layout.addWidget(self.graph, 0, 0, 1, btn_count)
-        '''
+
         for n, i in enumerate(btn_order):
             lbl = Qw.QLabel(i, self)
             lbl.setFixedSize(lbl.sizeHint())
-            lbl.mousePressEvent = lambda event, ind=n: self.slider.setValue(ind)
+            lbl.mousePressEvent = lambda event, ind=n: self.change_range(ind)
             self.layout.addWidget(lbl, 1, n)
 
         self.slider = Qw.QSlider(Qc.Qt.Horizontal, self)
@@ -52,28 +112,97 @@ class CustomGraph(Qw.QGroupBox):
         self.slider.setRange(0, btn_count - 1)
         self.slider.setTickInterval(1)
         self.slider.setSingleStep(1)
-        self.slider.valueChanged.connect(lambda x: print(x))
+        self.slider.ranges = [60, 900, 3600, 21600, 86400]
+        self.slider.valueChanged.connect(lambda ind: self.change_range(ind))
 
         self.layout.addWidget(self.slider, 2, 0, 1, btn_count)
-        '''
+
+        self.change_range(0)
+
+    def init_storage(self):
+        if self.data_path is None:
+            self.data = []
+        else:
+            self.connection.execute(
+                'CREATE TABLE if not exists "{0}" (x FLOAT, y FLOAT, group_ind INTEGER)'.format(
+                    self.data_path))
+            # Table is not empty
+            if self.connection.execute(
+                    'SELECT count(x) FROM "{}"'.format(
+                        self.data_path)
+            ).fetchone()[0] > 0:
+                # Get current session group
+                self.group = self.connection.execute(
+                    'SELECT max(group_ind) FROM "{0}"'.format(
+                        self.data_path)
+                ).fetchone()[0] + 1
+            else:
+                self.group = 0
+
+    def read_data(self, extra=''):
+        if self.data_path is None:
+            return self.data
+        else:
+            return self.connection.execute(
+                'SELECT * FROM "{0}"{1}'.format(
+                    self.data_path, extra)
+            ).fetchall()
+
+    def eventFilter(self, widget, event):
+        if event.type() == 31:
+            self.adjust_axis()
+        event.accept()
+        return False
+
+    def change_range(self, ind):
+        self.slider.setValue(ind)
+        self.graph.setXRange(-self.slider.ranges[ind], 0)
+        self.adjust_axis()
+
+    def adjust_axis(self):
+        visible_range = self.graph.visibleRange()
+        visible_size = visible_range.right() - visible_range.left()
+        ind = 0
+        ln = len(self.ticks)
+        while ind < ln - 1 and visible_size > self.ticks[ind][0]:
+            ind += 1
+        self.box.setLimits(xMax=visible_size * .1)
+        spacing = self.ticks[ind][2]
+        self.x_axis.setTickSpacing(spacing, spacing / 2)
+        self.x_axis.setScale(self.ticks[ind][3])
+        self.x_axis.setLabel('time', units=self.ticks[ind][1])
 
     def plot(self):
         update_time = time.time()
         self.graph.clear()
-        self.graph.plot([e[0] - update_time for e in self.data], [e[1] for e in self.data])
+        visible_range = self.graph.visibleRange()
+        data = self.read_data(
+            ' WHERE x >= {0} and x <= {1}'.format(
+                update_time + visible_range.left(),
+                update_time + visible_range.right()))
+        group_datas = {}
+        for i in data:
+            group = i[2]
+            gr_data = group_datas.get(group, None)
+            if gr_data is None:
+                gr_data = [[], []]
+                group_datas[group] = gr_data
+            gr_data[0].append(i[0] - update_time)
+            gr_data[1].append(i[1])
+        for i in group_datas.values():
+            self.graph.plot(*i)
 
     def append(self, dat):
-        update_time = time.time()
-        while len(self.data) > 0 and self.data[0][0] - update_time < self.cur_range[1] - 10:
-            del self.data[0]
-        self.data.append([time.time(), dat])
+        if self.data_path is None:
+            self.data.append([time.time(), dat])
+        else:
+            self.connection.execute(
+                'INSERT INTO "{0}" VALUES ("{1}", {2}, {3})'.format(
+                    self.data_path, time.time(), dat, self.group)
+            )
 
     def setLabel(self, *args):
         self.graph.setLabel(*args)
-
-    def setXRange(self, *args):
-        self.cur_range = args
-        self.graph.setXRange(*self.cur_range)
 
     def setYRange(self, *args):
         self.graph.setYRange(*args)
@@ -163,9 +292,9 @@ class ProcessWidget(Qw.QGroupBox):
         header_layout.addWidget(self.memory_label, 1)
         self.count_proc_label = Qw.QLabel()
         header_layout.addWidget(self.count_proc_label, 2)
-        
+
         # Detailed information popup
-        self.more_info = Qw.QGroupBox(self)
+        self.more_info = Qw.QWidget(self)
         self.more_info.hide()
         self.layout.addWidget(self.more_info)
         self.more_info.layout = Qw.QVBoxLayout(self.more_info)
@@ -214,21 +343,17 @@ class ProcessWidget(Qw.QGroupBox):
         self.proc_box.adjust()
         delayed(self, self.proc_box.adjust)
 
-        # Graph data storage
-        self.memory_list = []
-        self.cpu_list = []
-
-        self.graph_cpu = CustomGraph(self.more_info)
+        self.graph_cpu = CustomGraph(self.more_info, 'PROCESS_CPU.%s' % (self.proc_name,))
         self.graph_cpu.setYRange(0, 100)
         self.graph_cpu.plot()
-        self.graph_cpu.setFixedHeight(170)
+        self.graph_cpu.setFixedHeight(190)
         self.graph_cpu.setLabel('left', 'CPU')
         self.more_info.layout.addWidget(self.graph_cpu)
 
-        self.graph_mem = CustomGraph(self.more_info)
+        self.graph_mem = CustomGraph(self.more_info, 'PROCESS_MEM.%s' % (self.proc_name,))
         self.graph_mem.setYRange(0, 100)
         self.graph_mem.plot()
-        self.graph_mem.setFixedHeight(170)
+        self.graph_mem.setFixedHeight(190)
         self.graph_mem.setLabel('left', 'Memory usage')
         self.more_info.layout.addWidget(self.graph_mem)
 
@@ -286,10 +411,6 @@ class ProcessWidget(Qw.QGroupBox):
             self.count_res_usage()
             self.add_graph_data()
         self.add_new()
-
-    def set_graph_range(self, rng):
-        self.graph_cpu.setXRange(0, -rng * 60)
-        self.graph_mem.setXRange(0, -rng * 60)
 
     def add_graph_data(self):
         self.graph_cpu.append(self.cp_load)
@@ -399,10 +520,6 @@ class ProcessTab(Qw.QWidget):
         for k, v in self.widgets.copy().items():
             v.passive_update()
 
-    def set_graph_range(self, rng):
-        for k, v in self.widgets.items():
-            v.set_graph_range(rng)
-
     def get_processes(self):
         return set([e.name() for e in self.process_iter() if psutil.pid_exists(e.pid)])
 
@@ -415,23 +532,25 @@ class GraphsTab(Qw.QGroupBox):
     def __init__(self, parent):
         super().__init__()
         self.main = parent
-        self.setMinimumSize(*TAB_MINIMUM_SIZE)
+        # self.setMinimumSize(*TAB_MINIMUM_SIZE)
         self.init_ui()
 
     def init_ui(self):
         self.layout = Qw.QGridLayout(self)
 
-        self.cpu_graph = CustomGraph(self)
+        self.cpu_graph = CustomGraph(self, 'CPU')
         self.cpu_graph.setYRange(0, 100)
-        self.cpu_graph.setMinimumSize(100, 100)
+        self.cpu_graph.setMinimumSize(300, 180)
         self.cpu_graph.item.setLabel('left', 'CPU load')
         self.layout.addWidget(self.cpu_graph, 0, 0)
 
-        self.mem_graph = CustomGraph(self)
+        self.mem_graph = CustomGraph(self, 'MEMORY')
         self.mem_graph.setYRange(0, 100)
-        self.mem_graph.setMinimumSize(100, 100)
+        self.mem_graph.setMinimumSize(300, 180)
         self.mem_graph.item.setLabel('left', 'Memory usage')
         self.layout.addWidget(self.mem_graph, 1, 0)
+
+        self.setMinimumSize(self.sizeHint())
 
     def update_info(self):
         self.cpu_graph.append(psutil.cpu_percent())
@@ -442,10 +561,6 @@ class GraphsTab(Qw.QGroupBox):
     def passive_update(self):
         if self.main.current_tab() != self or not self.main.shown:
             self.update_info()
-
-    def set_graph_range(self, rng):
-        self.cpu_graph.setXRange(0, -rng * 60)
-        self.mem_graph.setXRange(0, -rng * 60)
 
 
 class SettingsTab(Qw.QGroupBox):
@@ -489,14 +604,6 @@ class SettingsTab(Qw.QGroupBox):
         self.spin_pas.setSingleStep(1.0)
         self.spin_pas.setValue(self.main.passive_period)
 
-        # Graph range
-        self.graph_inp = Qw.QSpinBox(self)
-        self.graph_inp.move(150, 70)
-        self.graph_inp.setMaximum(120)
-        self.graph_inp.setMinimum(1)
-        self.graph_inp.setSingleStep(1)
-        self.graph_inp.setValue(self.main.graph_range)
-
         self.button = Qw.QPushButton(self)
         self.button.setText('Apply')
         self.button.move(100, 100)
@@ -505,7 +612,6 @@ class SettingsTab(Qw.QGroupBox):
     def apply(self):
         self.main.settings.setValue('passive period', self.spin_pas.value())
         self.main.settings.setValue('update frequency', self.spin_fr.value())
-        self.main.settings.setValue('graph range', self.graph_inp.value())
         self.main.read_settings()
         self.main.set_graph_range()
 
@@ -601,7 +707,6 @@ class Main:
         self.tab_widgets = [ProcessTab(self), GraphsTab(self), SettingsTab(self)]
         self.scroll.setWidget(self.tab_widgets[0])
 
-        self.set_graph_range()
         self.update_info()
 
     def change_tab(self, ind):
@@ -622,7 +727,6 @@ class Main:
         self.settings = Qc.QSettings()
         self.update_frequency = float(self.settings.value('update frequency', 1))
         self.passive_period = float(self.settings.value('passive period', 5))
-        self.graph_range = int(self.settings.value('graph range', 1))
         if self.timing:
             self.kill_timers()
             self.init_timers()
@@ -632,17 +736,15 @@ class Main:
         return self.tab_widgets[self.tab_ind]
 
     def close_handler(self, event):
+        db_con.commit()
         if self.tray is not None:
             self.hide_to_tray()
             event.ignore()
         else:
             event.accept()
 
-    def set_graph_range(self):
-        self.tab_widgets[0].set_graph_range(self.graph_range)
-        self.tab_widgets[1].set_graph_range(self.graph_range)
-
     def popup_from_tray(self):
+        db_con.commit()
         if not self.shown:
             self.update_info()
             self.timer.start()
@@ -663,6 +765,7 @@ class Main:
         self.main_window.hide()
 
     def exit(self):
+        db_con.commit()
         self.shown = False
         self.kill_timers()
         if self.tray is not None:
