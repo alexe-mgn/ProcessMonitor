@@ -120,7 +120,8 @@ class CustomGraph(Qw.QGroupBox):
         self.graph.showGrid(True, True)
         self.box.disableAutoRange()
         self.graph.sigRangeChanged.connect(self.adjust_axis)
-
+		
+		# Кнопки изменения масштаба
         self.layout.addWidget(self.graph, 0, 0, 1, btn_count)
         for n, i in enumerate(btn_order):
             lbl = Qw.QPushButton(i, self)
@@ -161,7 +162,8 @@ class CustomGraph(Qw.QGroupBox):
                 ).fetchone()[0] + 1
             else:
                 self.group = 0
-
+	
+	# Считывание данных графика
     def read_data(self, extra=''):
         if self.data_path is None:
             return self.data
@@ -170,13 +172,14 @@ class CustomGraph(Qw.QGroupBox):
                 'SELECT * FROM "{0}"{1}'.format(
                     self.data_path, extra)
             ).fetchall()
-
+	
+	# Изменение размера в соответствии с индексом кнопки масштаба
     def change_range(self, ind):
         # self.slider.setValue(ind)
         self.graph.setXRange(-self.button_ranges[ind], 0)
         self.adjust_axis()
 
-    # Get axis tick string
+    # Изменение метки координаты на графике под нужный формат
     def scale_cord(self, crd, unit_ind):
         crd = abs(crd)
         unit = self.conversion[unit_ind]
@@ -186,10 +189,12 @@ class CustomGraph(Qw.QGroupBox):
             crd = crd % up_unit
         n += ' ' + self.str_units[uuind]
         return '\n'.join(['%g' % (crd / unit), n if crd == 0 else ''])
-
+	
+	# Изменение маркировки оси абсцисс
     def adjust_axis(self):
         visible_range = self.graph.visibleRange()
         visible_size = visible_range.right() - visible_range.left()
+		# Вычисление характеристик меток
         ind = 0
         ln = len(self.ticks)
         while ind < ln - 1 and visible_size > self.ticks[ind][0]:
@@ -199,7 +204,10 @@ class CustomGraph(Qw.QGroupBox):
         unit = self.conversion[unit_ind]
         spacing = int(data[2] * unit)
         # self.box.setLimits(xMax=visible_size * .1)
+		# Выставляем единицы измерения
         self.x_axis.setLabel('time', units=self.str_units[unit_ind])
+		# Таблица того, что называется в библиотеке major ticks
+		# В общем метки координат [координата, значение(текст)]
         major = [(e, self.scale_cord(e, unit_ind)) for e in
                  range(
                      0,
@@ -212,7 +220,8 @@ class CustomGraph(Qw.QGroupBox):
         # Может оказаться затратным
         self.plot()
         #
-
+	
+	# Чтение, отображение данных на график
     def plot(self):
         update_time = time.time()
         self.graph.clear()
@@ -221,7 +230,10 @@ class CustomGraph(Qw.QGroupBox):
             ' WHERE x >= {0} and x <= {1}'.format(
                 update_time + visible_range.left(),
                 update_time + visible_range.right()))
+		# Отображение каждой из групп отдельно
+		# group_data = {группа: [интервал до, значение]}
         group_datas = {}
+		# data = [время, значение, группа]
         for i in data:
             group = i[2]
             gr_data = group_datas.get(group, None)
@@ -232,7 +244,8 @@ class CustomGraph(Qw.QGroupBox):
             gr_data[1].append(i[1])
         for i in group_datas.values():
             self.graph.plot(*i)
-
+	
+	# Сохранение новых данных
     def append(self, dat):
         if self.data_path is None:
             self.data.append([time.time(), dat])
