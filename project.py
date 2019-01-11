@@ -118,26 +118,27 @@ class CustomGraph(Qw.QGroupBox):
         self.graph.setMenuEnabled(False)
         self.graph.hideButtons()
         self.graph.showGrid(True, True)
+        self.box.disableAutoRange()
         self.graph.sigRangeChanged.connect(self.adjust_axis)
 
         self.layout.addWidget(self.graph, 0, 0, 1, btn_count)
-
         for n, i in enumerate(btn_order):
-            lbl = Qw.QLabel(i, self)
+            lbl = Qw.QPushButton(i, self)
             lbl.setFixedSize(lbl.sizeHint())
-            lbl.mousePressEvent = lambda event, ind=n: self.change_range(ind)
+            lbl.clicked.connect(lambda _, ind=n: self.change_range(ind))
+            # lbl.mousePressEvent = lambda event, ind=n: self.change_range(ind)
             self.layout.addWidget(lbl, 1, n)
 
-        self.slider = Qw.QSlider(Qc.Qt.Horizontal, self)
-        self.slider.setTickPosition(1)
-        self.slider.setValue(0)
-        self.slider.setRange(0, btn_count - 1)
-        self.slider.setTickInterval(1)
-        self.slider.setSingleStep(1)
-        self.slider.ranges = [60, 900, 3600, 21600, 86400]
-        self.slider.valueChanged.connect(lambda ind: self.change_range(ind))
-
-        self.layout.addWidget(self.slider, 2, 0, 1, btn_count)
+        # self.slider = Qw.QSlider(Qc.Qt.Horizontal, self)
+        # self.slider.setTickPosition(1)
+        # self.slider.setValue(0)
+        # self.slider.setRange(0, btn_count - 1)
+        # self.slider.setTickInterval(1)
+        # self.slider.setSingleStep(1)
+        self.button_ranges = [60, 900, 3600, 21600, 86400]
+        # self.slider.valueChanged.connect(lambda ind: self.change_range(ind))
+        #
+        # self.layout.addWidget(self.slider, 2, 0, 1, btn_count)
 
         self.change_range(0)
 
@@ -171,8 +172,8 @@ class CustomGraph(Qw.QGroupBox):
             ).fetchall()
 
     def change_range(self, ind):
-        self.slider.setValue(ind)
-        self.graph.setXRange(-self.slider.ranges[ind], 0)
+        # self.slider.setValue(ind)
+        self.graph.setXRange(-self.button_ranges[ind], 0)
         self.adjust_axis()
 
     # Get axis tick string
@@ -207,6 +208,10 @@ class CustomGraph(Qw.QGroupBox):
         self.x_axis.setTicks([
             major
         ])
+        # !!!
+        # Может оказаться затратным
+        self.plot()
+        #
 
     def plot(self):
         update_time = time.time()
@@ -578,12 +583,14 @@ class GraphsTab(Qw.QGroupBox):
 
         self.cpu_graph = CustomGraph(self, 'CPU')
         self.cpu_graph.setYRange(0, 100)
+        print(self.cpu_graph.graph.range)
         self.cpu_graph.setMinimumSize(300, 180)
         self.cpu_graph.item.setLabel('left', 'CPU load')
         self.layout.addWidget(self.cpu_graph, 0, 0)
 
         self.mem_graph = CustomGraph(self, 'MEMORY')
         self.mem_graph.setYRange(0, 100)
+        print(self.mem_graph.graph.range)
         self.mem_graph.setMinimumSize(300, 180)
         self.mem_graph.item.setLabel('left', 'Memory usage')
         self.layout.addWidget(self.mem_graph, 1, 0)
@@ -765,6 +772,7 @@ class Main:
         self.current_tab().update_info()
 
     def passive_update(self):
+        db_con.commit()
         self.process_iter = list(psutil.process_iter())
         for i in self.tab_widgets:
             i.passive_update()
@@ -797,6 +805,7 @@ class Main:
             self.show()
 
     def hide_to_tray(self):
+        db_con.commit()
         if self.shown:
             self.timer.stop()
             self.hide()
